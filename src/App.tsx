@@ -143,7 +143,6 @@ export default function App() {
         path="/obrigado"
         element={
           <ThankYouScreen
-            onGoToAnalytics={() => navigate(isLoggedIn ? '/graficos' : '/login')}
             onGoHome={() => navigate(isLoggedIn ? '/oficinas' : '/login')}
           />
         }

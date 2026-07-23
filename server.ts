@@ -572,7 +572,9 @@ async function startServer() {
     try {
       const s = req.body;
 
-      const participatedWorkshops = s.participated_workshops !== false;
+      // Each time slot's workshop attendance is independent: a respondent may have
+      // attended a workshop in slot 1, slot 2, both, or neither.
+      const participatedAny = Boolean(s.workshop1_id) || Boolean(s.workshop2_id);
 
       await run(db, `
         INSERT INTO surveys (
@@ -591,11 +593,11 @@ async function startServer() {
         s.welcome_rating || 5, s.checkin_rating || 5,
         s.infra_accommodation || 5, s.infra_breakfast || 5, s.infra_lunch || 5, s.infra_dinner || 5, s.infra_restrooms || 5, s.infra_tech || 5,
         s.infra_lodging_used ? 1 : 0, s.infra_lodging_rating || 5,
-        participatedWorkshops ? 1 : 0,
-        participatedWorkshops ? (s.workshop1_id || null) : null,
-        participatedWorkshops ? (s.workshop1_rating || null) : null,
-        participatedWorkshops ? (s.workshop2_id || null) : null,
-        participatedWorkshops ? (s.workshop2_rating || null) : null,
+        participatedAny ? 1 : 0,
+        s.workshop1_id || null,
+        s.workshop1_id ? (s.workshop1_rating || null) : null,
+        s.workshop2_id || null,
+        s.workshop2_id ? (s.workshop2_rating || null) : null,
         s.youth_moment_rating || 5, s.mirim_moment_rating || 5, s.animation_rating || 5, s.mass_rating || 5, s.liturgy_rating || 5, s.eco_friendly_rating || 5,
         s.recommendation_text || '', s.recommendation_nps || 10, s.epa_word || '', s.general_suggestions || ''
       ]);

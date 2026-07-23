@@ -70,7 +70,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   const [showSplash, setShowSplash] = useState(true);
   const [splashPhase, setSplashPhase] = useState<'typing' | 'logo'>('typing');
   const [typedText, setTypedText] = useState('');
-  const SPLASH_WORD = 'EPAAAAAAAA!';
+  const SPLASH_WORD = 'EPAAAA!';
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -116,11 +116,13 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   const [infraLodgingUsed, setInfraLodgingUsed] = useState<boolean>(true);
   const [infraLodgingRating, setInfraLodgingRating] = useState<number>(0);
 
-  // Workshops
-  const [participatedWorkshops, setParticipatedWorkshops] = useState<boolean | null>(null);
+  // Workshops — each time slot is answered independently: a participant may have
+  // attended a workshop in the 1st slot, the 2nd, both, or neither (e.g. busy elsewhere).
+  const [participated1, setParticipated1] = useState<boolean | null>(null);
   const [workshop1Id, setWorkshop1Id] = useState<number | ''>('');
   const [workshop1Rating, setWorkshop1Rating] = useState<number>(0);
 
+  const [participated2, setParticipated2] = useState<boolean | null>(null);
   const [workshop2Id, setWorkshop2Id] = useState<number | ''>('');
   const [workshop2Rating, setWorkshop2Rating] = useState<number>(0);
 
@@ -288,18 +290,19 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'workshops',
-      isAnswered: () => participatedWorkshops !== null,
+      isAnswered: () => participated1 !== null,
       render: () => (
         <div>
-          <label className="text-sm font-bold text-slate-800 block mb-3">
-            Você participou de alguma oficina no 5º EPA?
+          <label className="text-sm font-bold text-slate-800 block mb-1">
+            Você participou de alguma oficina no 1º horário (08:30 às 10:00)?
           </label>
+          <p className="text-xs text-slate-500 mb-3">Se estava em outro compromisso nesse horário, escolha "Não participei".</p>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setParticipatedWorkshops(true)}
+              onClick={() => setParticipated1(true)}
               className={`py-4 rounded-2xl font-bold text-sm transition-all ${
-                participatedWorkshops === true
+                participated1 === true
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
@@ -308,9 +311,9 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
             </button>
             <button
               type="button"
-              onClick={() => setParticipatedWorkshops(false)}
+              onClick={() => setParticipated1(false)}
               className={`py-4 rounded-2xl font-bold text-sm transition-all ${
-                participatedWorkshops === false
+                participated1 === false
                   ? 'bg-slate-800 text-white shadow-md'
                   : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
@@ -321,7 +324,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
         </div>
       ),
     },
-    ...(participatedWorkshops
+    ...(participated1
       ? [
           {
             section: 'workshops' as SectionId,
@@ -329,14 +332,14 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-                  1ª Oficina Participada
+                  Qual oficina você participou no 1º horário?
                 </label>
                 <select
                   value={workshop1Id}
                   onChange={(e) => setWorkshop1Id(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="">Selecione a 1ª Oficina...</option>
+                  <option value="">Selecione a oficina...</option>
                   {(w1Options.length > 0 ? w1Options : workshops).map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.title} ({w.instructor})
@@ -344,24 +347,64 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
                   ))}
                 </select>
 
-                <RatingInput label="Nota para a 1ª Oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
+                <RatingInput label="Nota para essa oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
               </div>
             ),
           },
+        ]
+      : []),
+    {
+      section: 'workshops',
+      isAnswered: () => participated2 !== null,
+      render: () => (
+        <div>
+          <label className="text-sm font-bold text-slate-800 block mb-1">
+            Você participou de alguma oficina no 2º horário (10:30 às 12:00)?
+          </label>
+          <p className="text-xs text-slate-500 mb-3">Se estava em outro compromisso nesse horário, escolha "Não participei".</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setParticipated2(true)}
+              className={`py-4 rounded-2xl font-bold text-sm transition-all ${
+                participated2 === true
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Sim, participei
+            </button>
+            <button
+              type="button"
+              onClick={() => setParticipated2(false)}
+              className={`py-4 rounded-2xl font-bold text-sm transition-all ${
+                participated2 === false
+                  ? 'bg-slate-800 text-white shadow-md'
+                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Não participei
+            </button>
+          </div>
+        </div>
+      ),
+    },
+    ...(participated2
+      ? [
           {
             section: 'workshops' as SectionId,
             isAnswered: () => workshop2Id !== '' && workshop2Rating > 0,
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-                  2ª Oficina Participada
+                  Qual oficina você participou no 2º horário?
                 </label>
                 <select
                   value={workshop2Id}
                   onChange={(e) => setWorkshop2Id(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="">Selecione a 2ª Oficina...</option>
+                  <option value="">Selecione a oficina...</option>
                   {(w2Options.length > 0 ? w2Options : workshops).map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.title} ({w.instructor})
@@ -369,7 +412,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
                   ))}
                 </select>
 
-                <RatingInput label="Nota para a 2ª Oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
+                <RatingInput label="Nota para essa oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
               </div>
             ),
           },
@@ -565,11 +608,11 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       infra_lodging_used: infraLodgingUsed,
       infra_lodging_rating: infraLodgingUsed ? infraLodgingRating : 0,
 
-      participated_workshops: !!participatedWorkshops,
-      workshop1_id: participatedWorkshops && workshop1Id !== '' ? Number(workshop1Id) : undefined,
-      workshop1_rating: participatedWorkshops ? workshop1Rating : undefined,
-      workshop2_id: participatedWorkshops && workshop2Id !== '' ? Number(workshop2Id) : undefined,
-      workshop2_rating: participatedWorkshops ? workshop2Rating : undefined,
+      participated_workshops: !!participated1 || !!participated2,
+      workshop1_id: participated1 && workshop1Id !== '' ? Number(workshop1Id) : undefined,
+      workshop1_rating: participated1 ? workshop1Rating : undefined,
+      workshop2_id: participated2 && workshop2Id !== '' ? Number(workshop2Id) : undefined,
+      workshop2_rating: participated2 ? workshop2Rating : undefined,
 
       youth_moment_rating: youthMomentRating,
       mirim_moment_rating: mirimMomentRating,
@@ -621,8 +664,8 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
             ))}
 
             <h1
-              className="relative z-10 text-6xl sm:text-8xl font-black tracking-tighter text-slate-900 flex items-center italic"
-              style={{ textShadow: '0 4px 24px rgba(37, 99, 235, 0.25)' }}
+              className="relative z-10 text-6xl sm:text-8xl tracking-tight text-slate-900 flex items-center"
+              style={{ textShadow: '0 4px 24px rgba(37, 99, 235, 0.25)', fontFamily: 'var(--font-comic)', fontWeight: 800 }}
             >
               {typedText.split('').map((char, i) => (
                 <motion.span

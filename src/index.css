@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-comic: "Baloo 2", "Comic Sans MS", cursive;
   --color-epa-blue: #2563eb;
   --color-epa-indigo: #4f46e5;
   --color-epa-night: #0f172a;
