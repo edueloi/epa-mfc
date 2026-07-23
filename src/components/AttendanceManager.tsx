@@ -263,7 +263,7 @@ export const AttendanceManager: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Oficinas Ativas</p>
-            <p className="text-lg sm:text-xl font-black text-slate-900">{workshops.length}</p>
+            <p className="text-lg sm:text-xl font-black text-slate-900">{new Set(workshops.map(w => w.title)).size}</p>
           </div>
         </div>
 
