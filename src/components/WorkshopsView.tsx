@@ -33,10 +33,16 @@ export const WorkshopsView: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newInstructor, setNewInstructor] = useState('');
   const [newLocation, setNewLocation] = useState('');
-  const [newTimeSlot, setNewTimeSlot] = useState('1ª Oficina');
+  // A theme commonly repeats at both fixed time slots for the same instructor —
+  // both are checked by default; the Admin can uncheck one for a single-occurrence workshop.
+  const [newSlot1Checked, setNewSlot1Checked] = useState(true);
+  const [newSlot2Checked, setNewSlot2Checked] = useState(true);
   const [newOficineiroUser, setNewOficineiroUser] = useState('');
   const [newOficineiroPass, setNewOficineiroPass] = useState('');
   const [showOficineiroPass, setShowOficineiroPass] = useState(false);
+
+  const SLOT_1_LABEL = '1ª Oficina (08:30 às 10:00)';
+  const SLOT_2_LABEL = '2ª Oficina (10:30 às 12:00)';
 
   // Oficineiro accounts modal (per selected workshop)
   const [showOficineirosModal, setShowOficineirosModal] = useState(false);
@@ -106,6 +112,12 @@ export const WorkshopsView: React.FC = () => {
     e.preventDefault();
     if (!newTitle.trim() || !newInstructor.trim()) return;
 
+    const timeSlots = [
+      ...(newSlot1Checked ? [SLOT_1_LABEL] : []),
+      ...(newSlot2Checked ? [SLOT_2_LABEL] : [])
+    ];
+    if (timeSlots.length === 0) return;
+
     try {
       const res = await authFetch('/api/workshops', {
         method: 'POST',
@@ -114,15 +126,16 @@ export const WorkshopsView: React.FC = () => {
           title: newTitle,
           instructor: newInstructor,
           location: newLocation || 'Sala Principal',
-          time_slot: newTimeSlot,
+          time_slots: timeSlots,
           max_slots: 35
         })
       });
 
       if (!res.ok) return;
-      const { id: newWorkshopId } = await res.json();
+      const { ids: newWorkshopIds } = await res.json();
 
-      // Optionally create the oficineiro login bound to the workshop just created
+      // Optionally create the oficineiro login bound to every occurrence just created,
+      // so the same instructor can mark attendance on both time slots with one account.
       if (newOficineiroUser.trim() && newOficineiroPass.trim()) {
         await authFetch('/api/oficineiros', {
           method: 'POST',
@@ -130,7 +143,7 @@ export const WorkshopsView: React.FC = () => {
           body: JSON.stringify({
             username: newOficineiroUser.trim(),
             password: newOficineiroPass.trim(),
-            workshop_id: newWorkshopId
+            workshop_ids: newWorkshopIds
           })
         });
       }
@@ -138,6 +151,8 @@ export const WorkshopsView: React.FC = () => {
       setNewTitle('');
       setNewInstructor('');
       setNewLocation('');
+      setNewSlot1Checked(true);
+      setNewSlot2Checked(true);
       setNewOficineiroUser('');
       setNewOficineiroPass('');
       setShowAddModal(false);
@@ -553,28 +568,42 @@ export const WorkshopsView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-2">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Local / Sala</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Auditório B"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                  />
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Local / Sala</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Auditório B"
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-2">Horários desta oficina</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={newSlot1Checked}
+                      onChange={(e) => setNewSlot1Checked(e.target.checked)}
+                      className="w-4 h-4 accent-blue-600 flex-shrink-0"
+                    />
+                    <span className="text-sm text-slate-800">{SLOT_1_LABEL}</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={newSlot2Checked}
+                      onChange={(e) => setNewSlot2Checked(e.target.checked)}
+                      className="w-4 h-4 accent-blue-600 flex-shrink-0"
+                    />
+                    <span className="text-sm text-slate-800">{SLOT_2_LABEL}</span>
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Bloco de Horário</label>
-                  <select
-                    value={newTimeSlot}
-                    onChange={(e) => setNewTimeSlot(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm"
-                  >
-                    <option value="1ª Oficina">1ª Oficina</option>
-                    <option value="2ª Oficina">2ª Oficina</option>
-                  </select>
-                </div>
+                {!newSlot1Checked && !newSlot2Checked && (
+                  <p className="text-[11px] text-rose-600 font-bold mt-1.5">Selecione ao menos um horário.</p>
+                )}
               </div>
 
               <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
@@ -632,7 +661,8 @@ export const WorkshopsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 text-white font-extrabold rounded-xl shadow-md"
+                  disabled={!newSlot1Checked && !newSlot2Checked}
+                  className="px-5 py-2 bg-blue-600 text-white font-extrabold rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Salvar Oficina
                 </button>
@@ -660,12 +690,20 @@ export const WorkshopsView: React.FC = () => {
                 </p>
               ) : (
                 oficineiros.map((o) => (
-                  <div key={o.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div key={o.id} className="flex items-start justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{o.username}</p>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {o.workshop_title || 'Sem oficina vinculada'}
-                      </p>
+                      {o.workshops.length === 0 ? (
+                        <p className="text-[11px] text-slate-500">Sem oficina vinculada</p>
+                      ) : (
+                        <div className="space-y-0.5 mt-0.5">
+                          {o.workshops.map((w) => (
+                            <p key={w.id} className="text-[11px] text-slate-500 truncate">
+                              {w.title} <span className="text-slate-400">• {w.time_slot}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleDeleteOficineiro(o.id)}

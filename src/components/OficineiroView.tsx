@@ -21,58 +21,66 @@ interface WorkshopWithDetails {
 }
 
 export const OficineiroView: React.FC = () => {
-  const [workshop, setWorkshop] = useState<WorkshopWithDetails | null>(null);
+  const [workshops, setWorkshops] = useState<WorkshopWithDetails[]>([]);
+  const [activeWorkshopId, setActiveWorkshopId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchMyWorkshop = async () => {
+  const fetchMyWorkshops = async () => {
     setLoading(true);
     try {
       const res = await authFetch('/api/workshops');
       if (res.ok) {
         const data = await res.json();
-        setWorkshop(Array.isArray(data) && data.length > 0 ? data[0] : null);
+        setWorkshops(Array.isArray(data) ? data : []);
+        setActiveWorkshopId(prev => {
+          if (prev && data.some((w: WorkshopWithDetails) => w.id === prev)) return prev;
+          return data.length > 0 ? data[0].id : null;
+        });
       }
     } catch (err) {
-      console.error('Erro ao carregar oficina:', err);
+      console.error('Erro ao carregar oficinas:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMyWorkshop();
+    fetchMyWorkshops();
   }, []);
+
+  const workshop = workshops.find(w => w.id === activeWorkshopId) || null;
 
   const handleMarkAttendance = async (participantId: number, status: 'PRESENTE' | 'FALTA') => {
     if (!workshop) return;
+    const workshopId = workshop.id;
 
-    setWorkshop(prev => {
-      if (!prev) return prev;
-      const prevStatus = prev.participants.find(p => p.id === participantId)?.attendance_status;
+    setWorkshops(prev => prev.map(w => {
+      if (w.id !== workshopId) return w;
+      const prevStatus = w.participants.find(p => p.id === participantId)?.attendance_status;
       return {
-        ...prev,
-        participants: prev.participants.map(p =>
+        ...w,
+        participants: w.participants.map(p =>
           p.id === participantId ? { ...p, attendance_status: status } : p
         ),
         present_count: status === 'PRESENTE'
-          ? prev.present_count + (prevStatus !== 'PRESENTE' ? 1 : 0)
-          : (prevStatus === 'PRESENTE' ? prev.present_count - 1 : prev.present_count),
+          ? w.present_count + (prevStatus !== 'PRESENTE' ? 1 : 0)
+          : (prevStatus === 'PRESENTE' ? w.present_count - 1 : w.present_count),
         absent_count: status === 'FALTA'
-          ? prev.absent_count + (prevStatus !== 'FALTA' ? 1 : 0)
-          : (prevStatus === 'FALTA' ? prev.absent_count - 1 : prev.absent_count)
+          ? w.absent_count + (prevStatus !== 'FALTA' ? 1 : 0)
+          : (prevStatus === 'FALTA' ? w.absent_count - 1 : w.absent_count)
       };
-    });
+    }));
 
     try {
       await authFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participant_id: participantId, workshop_id: workshop.id, status })
+        body: JSON.stringify({ participant_id: participantId, workshop_id: workshopId, status })
       });
     } catch (err) {
       console.error('Erro ao salvar presença:', err);
-      fetchMyWorkshop();
+      fetchMyWorkshops();
     }
   };
 
@@ -104,6 +112,23 @@ export const OficineiroView: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+
+      {/* Time slot tabs, only shown when the oficineiro has more than one occurrence */}
+      {workshops.length > 1 && (
+        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">
+          {workshops.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => setActiveWorkshopId(w.id)}
+              className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                activeWorkshopId === w.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {w.time_slot}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-800 space-y-3">
@@ -151,7 +176,7 @@ export const OficineiroView: React.FC = () => {
           <Users className="w-4 h-4" /> {filteredParticipants.length}
         </span>
         <button
-          onClick={fetchMyWorkshop}
+          onClick={fetchMyWorkshops}
           title="Atualizar lista"
           className="p-2.5 text-slate-500 hover:text-slate-800 bg-slate-50 rounded-xl border border-slate-200 flex-shrink-0"
         >

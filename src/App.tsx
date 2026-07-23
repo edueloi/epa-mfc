@@ -97,8 +97,8 @@ export default function App() {
       .finally(() => setCheckingSession(false));
   }, []);
 
-  const handleLoginSuccess = (token: string, _username: string, userRole: string, workshopId: number | null) => {
-    setAuthSession({ token, role: userRole, workshopId });
+  const handleLoginSuccess = (token: string, _username: string, userRole: string, workshopIds: number[]) => {
+    setAuthSession({ token, role: userRole, workshopIds });
     setIsLoggedIn(true);
     setRole(userRole);
     navigate('/oficinas', { replace: true });

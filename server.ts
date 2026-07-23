@@ -9,7 +9,7 @@ import { getDb, queryAll, queryOne, run, seedInitialData } from './src/server/db
 interface SessionInfo {
   username: string;
   role: string;
-  workshopId: number | null;
+  workshopIds: number[];
   expiresAt: number;
 }
 
@@ -56,11 +56,18 @@ async function startServer() {
         return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
       }
 
+      const workshopRows = await queryAll(
+        db,
+        'SELECT workshop_id FROM oficineiro_workshops WHERE user_id = ?',
+        [user.id]
+      );
+      const workshopIds = workshopRows.map(r => r.workshop_id);
+
       const token = crypto.randomBytes(32).toString('hex');
       activeSessions.set(token, {
         username: user.username,
         role: user.role,
-        workshopId: user.workshop_id || null,
+        workshopIds,
         expiresAt: Date.now() + SESSION_TTL_MS
       });
 
@@ -69,7 +76,7 @@ async function startServer() {
         token,
         username: user.username,
         role: user.role,
-        workshop_id: user.workshop_id || null
+        workshop_ids: workshopIds
       });
     } catch (err: any) {
       console.error('Erro /api/login:', err);
@@ -94,7 +101,7 @@ async function startServer() {
       return res.status(401).json({ error: 'Sessão inválida ou expirada.' });
     }
 
-    res.json({ username: session.username, role: session.role, workshop_id: session.workshopId });
+    res.json({ username: session.username, role: session.role, workshop_ids: session.workshopIds });
   });
 
   // Middleware to protect organizer-only routes; attaches session info to req.session
@@ -171,17 +178,15 @@ async function startServer() {
     }
   });
 
-  // POST Oficineiro account (Admin only) — creates a login bound to a specific workshop
+  // POST Oficineiro account (Admin only) — creates a login bound to one or more workshops
+  // (e.g. the same theme repeating at two time slots with the same instructor).
   app.post('/api/oficineiros', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { username, password, workshop_id } = req.body;
-      if (!username || !password || !workshop_id) {
-        return res.status(400).json({ error: 'Usuário, senha e oficina são obrigatórios.' });
-      }
+      const { username, password, workshop_ids } = req.body;
+      const ids: number[] = Array.isArray(workshop_ids) ? workshop_ids : (workshop_ids ? [workshop_ids] : []);
 
-      const workshop = await queryOne(db, 'SELECT id FROM workshops WHERE id = ?', [workshop_id]);
-      if (!workshop) {
-        return res.status(400).json({ error: 'Oficina não encontrada.' });
+      if (!username || !password || ids.length === 0) {
+        return res.status(400).json({ error: 'Usuário, senha e ao menos uma oficina são obrigatórios.' });
       }
 
       const existing = await queryOne(db, 'SELECT id FROM users WHERE username = ?', [username.trim()]);
@@ -192,9 +197,17 @@ async function startServer() {
       const passwordHash = await bcrypt.hash(password, 10);
       const result = await run(
         db,
-        'INSERT INTO users (username, password_hash, role, workshop_id) VALUES (?, ?, ?, ?)',
-        [username.trim(), passwordHash, 'oficineiro', workshop_id]
+        'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+        [username.trim(), passwordHash, 'oficineiro']
       );
+
+      for (const workshopId of ids) {
+        await run(
+          db,
+          'INSERT IGNORE INTO oficineiro_workshops (user_id, workshop_id) VALUES (?, ?)',
+          [result.insertId, workshopId]
+        );
+      }
 
       res.json({ success: true, id: result.insertId });
     } catch (err: any) {
@@ -205,14 +218,20 @@ async function startServer() {
   // GET Oficineiro accounts (Admin only)
   app.get('/api/oficineiros', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const rows = await queryAll(db, `
-        SELECT u.id, u.username, u.workshop_id, w.title as workshop_title
-        FROM users u
-        LEFT JOIN workshops w ON u.workshop_id = w.id
-        WHERE u.role = 'oficineiro'
-        ORDER BY u.username ASC
-      `);
-      res.json(rows);
+      const users = await queryAll(db, `SELECT id, username FROM users WHERE role = 'oficineiro' ORDER BY username ASC`);
+
+      const withWorkshops = await Promise.all(users.map(async (u) => {
+        const workshops = await queryAll(db, `
+          SELECT w.id, w.title, w.time_slot
+          FROM oficineiro_workshops ow
+          JOIN workshops w ON w.id = ow.workshop_id
+          WHERE ow.user_id = ?
+          ORDER BY w.time_slot, w.id
+        `, [u.id]);
+        return { ...u, workshops };
+      }));
+
+      res.json(withWorkshops);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -258,8 +277,11 @@ async function startServer() {
   app.get('/api/workshops', optionalAuth, async (req, res) => {
     try {
       const isOficineiro = req.session?.role === 'oficineiro';
-      const workshopFilter = isOficineiro ? 'WHERE w.id = ?' : '';
-      const filterParams = isOficineiro ? [req.session!.workshopId] : [];
+      const workshopIds = req.session?.workshopIds || [];
+      const workshopFilter = isOficineiro
+        ? (workshopIds.length > 0 ? `WHERE w.id IN (${workshopIds.map(() => '?').join(',')})` : 'WHERE 1 = 0')
+        : '';
+      const filterParams = isOficineiro ? workshopIds : [];
 
       const workshops = await queryAll(db, `
         SELECT w.*,
@@ -294,21 +316,31 @@ async function startServer() {
     }
   });
 
-  // POST Workshop (Admin only)
+  // POST Workshop (Admin only) — a single theme can run at more than one fixed time slot
+  // (e.g. 08:30-10:00 and 10:30-12:00), each becoming its own workshop row so attendance
+  // is tracked per occurrence. Returns every row id created.
   app.post('/api/workshops', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { title, instructor, location, time_slot, max_slots } = req.body;
+      const { title, instructor, location, time_slots, max_slots } = req.body;
+      const slots: string[] = Array.isArray(time_slots) && time_slots.length > 0
+        ? time_slots
+        : [req.body.time_slot || '1ª Oficina'];
+
       if (!title || !instructor || !location) {
         return res.status(400).json({ error: 'Título, oficineiro e local são obrigatórios.' });
       }
 
-      const result = await run(
-        db,
-        `INSERT INTO workshops (title, instructor, location, time_slot, max_slots) VALUES (?, ?, ?, ?, ?)`,
-        [title, instructor, location, time_slot || '1ª Oficina', max_slots || 30]
-      );
+      const ids: number[] = [];
+      for (const slot of slots) {
+        const result = await run(
+          db,
+          `INSERT INTO workshops (title, instructor, location, time_slot, max_slots) VALUES (?, ?, ?, ?, ?)`,
+          [title, instructor, location, slot, max_slots || 30]
+        );
+        ids.push(result.insertId);
+      }
 
-      res.json({ success: true, id: result.insertId });
+      res.json({ success: true, id: ids[0], ids });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -379,7 +411,7 @@ async function startServer() {
         return res.status(400).json({ error: 'Parâmetros inválidos para chamada.' });
       }
 
-      if (req.session?.role === 'oficineiro' && req.session.workshopId !== Number(workshop_id)) {
+      if (req.session?.role === 'oficineiro' && !req.session.workshopIds.includes(Number(workshop_id))) {
         return res.status(403).json({ error: 'Você só pode marcar presença na sua própria oficina.' });
       }
 

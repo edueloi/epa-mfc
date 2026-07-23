@@ -86,9 +86,19 @@ async function initTables(database: Pool) {
       username VARCHAR(100) NOT NULL UNIQUE,
       password_hash VARCHAR(255) NOT NULL,
       role VARCHAR(50) NOT NULL DEFAULT 'admin',
-      workshop_id INT DEFAULT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (workshop_id) REFERENCES workshops(id) ON DELETE SET NULL
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // An oficineiro account may be linked to more than one workshop occurrence
+  // (e.g. the same theme repeating at 08:30 and again at 10:30 with the same instructor).
+  await database.query(`
+    CREATE TABLE IF NOT EXISTS oficineiro_workshops (
+      user_id INT NOT NULL,
+      workshop_id INT NOT NULL,
+      PRIMARY KEY (user_id, workshop_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (workshop_id) REFERENCES workshops(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
@@ -100,6 +110,31 @@ async function initTables(database: Pool) {
       ['Admin', defaultHash, 'admin']
     );
     console.log('✓ Usuário padrão "Admin" criado.');
+  }
+
+  // Migration: older deployments had a single users.workshop_id column.
+  // Move any existing links into oficineiro_workshops, then drop the column.
+  const [legacyColRows] = await database.query<RowDataPacket[]>(`
+    SELECT COUNT(*) as count FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'workshop_id'
+  `);
+  if ((legacyColRows[0]?.count || 0) > 0) {
+    await database.query(`
+      INSERT IGNORE INTO oficineiro_workshops (user_id, workshop_id)
+      SELECT id, workshop_id FROM users WHERE workshop_id IS NOT NULL
+    `);
+
+    const [fkRows] = await database.query<RowDataPacket[]>(`
+      SELECT CONSTRAINT_NAME AS constraintName FROM information_schema.key_column_usage
+      WHERE table_schema = DATABASE() AND table_name = 'users'
+        AND column_name = 'workshop_id' AND referenced_table_name IS NOT NULL
+    `);
+    for (const fk of fkRows) {
+      await database.query(`ALTER TABLE users DROP FOREIGN KEY \`${fk.constraintName}\``);
+    }
+
+    await database.query(`ALTER TABLE users DROP COLUMN workshop_id`);
+    console.log('✓ Migração: users.workshop_id movido para oficineiro_workshops.');
   }
 
   await database.query(`

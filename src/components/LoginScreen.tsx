@@ -5,7 +5,7 @@ import logoEpa from '../images/logo-epa.png';
 import logoMfc from '../images/mfc.jpg';
 
 interface LoginScreenProps {
-  onLoginSuccess: (token: string, username: string, role: string, workshopId: number | null) => void;
+  onLoginSuccess: (token: string, username: string, role: string, workshopIds: number[]) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
@@ -34,7 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      onLoginSuccess(data.token, data.username, data.role, data.workshop_id ?? null);
+      onLoginSuccess(data.token, data.username, data.role, data.workshop_ids ?? []);
     } catch (err) {
       setError('Não foi possível conectar ao servidor. Tente novamente.');
     } finally {

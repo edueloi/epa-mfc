@@ -1,11 +1,11 @@
 const TOKEN_KEY = 'epa_auth_token';
 const ROLE_KEY = 'epa_auth_role';
-const WORKSHOP_KEY = 'epa_auth_workshop_id';
+const WORKSHOP_IDS_KEY = 'epa_auth_workshop_ids';
 
 export interface AuthSession {
   token: string;
   role: string;
-  workshopId: number | null;
+  workshopIds: number[];
 }
 
 export function getAuthToken(): string | null {
@@ -16,25 +16,26 @@ export function getAuthRole(): string | null {
   return localStorage.getItem(ROLE_KEY);
 }
 
-export function getAuthWorkshopId(): number | null {
-  const raw = localStorage.getItem(WORKSHOP_KEY);
-  return raw ? Number(raw) : null;
+export function getAuthWorkshopIds(): number[] {
+  const raw = localStorage.getItem(WORKSHOP_IDS_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }
 
 export function setAuthSession(session: AuthSession) {
   localStorage.setItem(TOKEN_KEY, session.token);
   localStorage.setItem(ROLE_KEY, session.role);
-  if (session.workshopId !== null) {
-    localStorage.setItem(WORKSHOP_KEY, String(session.workshopId));
-  } else {
-    localStorage.removeItem(WORKSHOP_KEY);
-  }
+  localStorage.setItem(WORKSHOP_IDS_KEY, JSON.stringify(session.workshopIds));
 }
 
 export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
-  localStorage.removeItem(WORKSHOP_KEY);
+  localStorage.removeItem(WORKSHOP_IDS_KEY);
 }
 
 export function authFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {

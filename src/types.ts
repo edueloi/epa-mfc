@@ -15,8 +15,7 @@ export interface City {
 export interface Oficineiro {
   id: number;
   username: string;
-  workshop_id: number | null;
-  workshop_title?: string | null;
+  workshops: { id: number; title: string; time_slot: string }[];
 }
 
 export interface Participant {
