@@ -434,9 +434,17 @@ async function startServer() {
       const countRes = await queryOne(db, 'SELECT COUNT(*) as total FROM surveys');
       const total = countRes?.total || 0;
 
+      const participantsRes = await queryOne(db, 'SELECT COUNT(*) as total FROM participants');
+      const totalParticipants = participantsRes?.total || 0;
+      const responseRate = totalParticipants > 0
+        ? Math.round((total / totalParticipants) * 1000) / 10
+        : 0;
+
       if (total === 0) {
         return res.json({
           total_surveys: 0,
+          total_participants: totalParticipants,
+          response_rate: responseRate,
           avg_overall_score: 0,
           nps_score: 0,
           averages: {
@@ -447,7 +455,8 @@ async function startServer() {
           },
           workshop_ratings: [],
           recent_testimonials: [],
-          recent_suggestions: []
+          recent_suggestions: [],
+          epa_words: []
         });
       }
 
@@ -509,15 +518,23 @@ async function startServer() {
         ORDER BY id DESC LIMIT 10
       `);
 
+      const epaWordRows = await queryAll(db, `
+        SELECT epa_word FROM surveys
+        WHERE epa_word IS NOT NULL AND TRIM(epa_word) != ''
+        ORDER BY id DESC LIMIT 30
+      `);
+
       const overallSum = (
-        (avgs.welcome || 5) + (avgs.checkin || 5) + (avgs.mass || 5) +
-        (avgs.animation || 5) + (avgs.liturgy || 5) + (avgs.eco_friendly || 5)
+        (Number(avgs.welcome) || 5) + (Number(avgs.checkin) || 5) + (Number(avgs.mass) || 5) +
+        (Number(avgs.animation) || 5) + (Number(avgs.liturgy) || 5) + (Number(avgs.eco_friendly) || 5)
       ) / 6;
 
       const formatAvg = (val: any) => Math.round((val || 0) * 10) / 10;
 
       res.json({
         total_surveys: total,
+        total_participants: totalParticipants,
+        response_rate: responseRate,
         avg_overall_score: formatAvg(overallSum),
         nps_score: formatAvg(avgs.nps),
         averages: {
@@ -541,7 +558,8 @@ async function startServer() {
         },
         workshop_ratings,
         recent_testimonials: testimonials,
-        recent_suggestions: suggestions
+        recent_suggestions: suggestions,
+        epa_words: epaWordRows.map(r => r.epa_word)
       });
     } catch (err: any) {
       console.error('Erro /api/surveys:', err);
@@ -554,6 +572,8 @@ async function startServer() {
     try {
       const s = req.body;
 
+      const participatedWorkshops = s.participated_workshops !== false;
+
       await run(db, `
         INSERT INTO surveys (
           pre_study_rating, pre_study_comment,
@@ -561,20 +581,23 @@ async function startServer() {
           welcome_rating, checkin_rating,
           infra_accommodation, infra_breakfast, infra_lunch, infra_dinner, infra_restrooms, infra_tech,
           infra_lodging_used, infra_lodging_rating,
-          workshop1_id, workshop1_rating, workshop2_id, workshop2_rating,
+          participated_workshops, workshop1_id, workshop1_rating, workshop2_id, workshop2_rating,
           youth_moment_rating, mirim_moment_rating, animation_rating, mass_rating, liturgy_rating, eco_friendly_rating,
-          recommendation_text, recommendation_nps, general_suggestions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          recommendation_text, recommendation_nps, epa_word, general_suggestions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         s.pre_study_rating || 5, s.pre_study_comment || '',
         s.marketing_rating || 5, s.marketing_comment || '',
         s.welcome_rating || 5, s.checkin_rating || 5,
         s.infra_accommodation || 5, s.infra_breakfast || 5, s.infra_lunch || 5, s.infra_dinner || 5, s.infra_restrooms || 5, s.infra_tech || 5,
         s.infra_lodging_used ? 1 : 0, s.infra_lodging_rating || 5,
-        s.workshop1_id || null, s.workshop1_rating || 5,
-        s.workshop2_id || null, s.workshop2_rating || 5,
+        participatedWorkshops ? 1 : 0,
+        participatedWorkshops ? (s.workshop1_id || null) : null,
+        participatedWorkshops ? (s.workshop1_rating || null) : null,
+        participatedWorkshops ? (s.workshop2_id || null) : null,
+        participatedWorkshops ? (s.workshop2_rating || null) : null,
         s.youth_moment_rating || 5, s.mirim_moment_rating || 5, s.animation_rating || 5, s.mass_rating || 5, s.liturgy_rating || 5, s.eco_friendly_rating || 5,
-        s.recommendation_text || '', s.recommendation_nps || 10, s.general_suggestions || ''
+        s.recommendation_text || '', s.recommendation_nps || 10, s.epa_word || '', s.general_suggestions || ''
       ]);
 
       res.json({ success: true, message: 'Pesquisa enviada com sucesso!' });

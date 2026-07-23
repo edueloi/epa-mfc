@@ -60,10 +60,11 @@ export interface SurveyResponse {
   infra_lodging_rating?: number;
 
   // Workshops
+  participated_workshops: boolean;
   workshop1_id?: number;
-  workshop1_rating: number;
+  workshop1_rating?: number;
   workshop2_id?: number;
-  workshop2_rating: number;
+  workshop2_rating?: number;
 
   // Moments
   youth_moment_rating: number; // Momento Jovem
@@ -76,12 +77,15 @@ export interface SurveyResponse {
   // Final & Recommendation
   recommendation_text?: string;
   recommendation_nps: number; // 0 to 10
+  epa_word?: string; // Uma palavra ou frase que define o EPA
   general_suggestions?: string;
   created_at?: string;
 }
 
 export interface SurveyAverages {
   total_surveys: number;
+  total_participants: number;
+  response_rate: number; // percentage, e.g. 62.5
   avg_overall_score: number;
   nps_score: number;
   averages: {
@@ -118,6 +122,7 @@ export interface SurveyAverages {
     text: string;
     date: string;
   }[];
+  epa_words: string[];
 }
 
 export interface SystemStats {

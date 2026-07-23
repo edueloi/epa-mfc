@@ -65,6 +65,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   const [infraLodgingRating, setInfraLodgingRating] = useState<number>(0);
 
   // Workshops
+  const [participatedWorkshops, setParticipatedWorkshops] = useState<boolean | null>(null);
   const [workshop1Id, setWorkshop1Id] = useState<number | ''>('');
   const [workshop1Rating, setWorkshop1Rating] = useState<number>(0);
 
@@ -82,6 +83,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   // Recommendation & Comments
   const [recommendationText, setRecommendationText] = useState<string>('');
   const [recommendationNps, setRecommendationNps] = useState<number>(10);
+  const [epaWord, setEpaWord] = useState<string>('');
   const [generalSuggestions, setGeneralSuggestions] = useState<string>('');
 
   const [consentAccepted, setConsentAccepted] = useState<boolean>(false);
@@ -92,24 +94,18 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       .then(data => {
         if (Array.isArray(data)) {
           setWorkshops(data);
-          if (data.length > 0) {
-            const w1 = data.find(w => w.time_slot === '1ª Oficina') || data[0];
-            const w2 = data.find(w => w.time_slot === '2ª Oficina') || data[1] || data[0];
-            if (w1) setWorkshop1Id(w1.id);
-            if (w2) setWorkshop2Id(w2.id);
-          }
         }
       })
       .catch(err => console.error('Erro ao buscar oficinas:', err));
   }, []);
 
-  const w1Options = workshops.filter(w => w.time_slot === '1ª Oficina' || w.time_slot === 'Geral');
-  const w2Options = workshops.filter(w => w.time_slot === '2ª Oficina' || w.time_slot === 'Geral');
+  const w1Options = workshops.filter(w => w.time_slot.startsWith('1ª') || w.time_slot === 'Geral');
+  const w2Options = workshops.filter(w => w.time_slot.startsWith('2ª') || w.time_slot === 'Geral');
 
   // -----------------------------------------------------------------------
   // One question (or small self-contained group) per screen.
   // -----------------------------------------------------------------------
-  type Question = { section: SectionId; render: () => React.ReactNode };
+  type Question = { section: SectionId; render: () => React.ReactNode; isAnswered?: () => boolean };
 
   const questions: Question[] = [
     {
@@ -233,52 +229,91 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'workshops',
+      isAnswered: () => participatedWorkshops !== null,
       render: () => (
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-            1ª Oficina Participada
+        <div>
+          <label className="text-sm font-bold text-slate-800 block mb-3">
+            Você participou de alguma oficina no 5º EPA?
           </label>
-          <select
-            value={workshop1Id}
-            onChange={(e) => setWorkshop1Id(e.target.value ? Number(e.target.value) : '')}
-            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="">Selecione a 1ª Oficina...</option>
-            {(w1Options.length > 0 ? w1Options : workshops).map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.title} ({w.instructor})
-              </option>
-            ))}
-          </select>
-
-          <RatingInput label="Nota para a 1ª Oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setParticipatedWorkshops(true)}
+              className={`py-4 rounded-2xl font-bold text-sm transition-all ${
+                participatedWorkshops === true
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Sim, participei
+            </button>
+            <button
+              type="button"
+              onClick={() => setParticipatedWorkshops(false)}
+              className={`py-4 rounded-2xl font-bold text-sm transition-all ${
+                participatedWorkshops === false
+                  ? 'bg-slate-800 text-white shadow-md'
+                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Não participei
+            </button>
+          </div>
         </div>
       ),
     },
-    {
-      section: 'workshops',
-      render: () => (
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-            2ª Oficina Participada
-          </label>
-          <select
-            value={workshop2Id}
-            onChange={(e) => setWorkshop2Id(e.target.value ? Number(e.target.value) : '')}
-            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="">Selecione a 2ª Oficina...</option>
-            {(w2Options.length > 0 ? w2Options : workshops).map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.title} ({w.instructor})
-              </option>
-            ))}
-          </select>
+    ...(participatedWorkshops
+      ? [
+          {
+            section: 'workshops' as SectionId,
+            render: () => (
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
+                  1ª Oficina Participada
+                </label>
+                <select
+                  value={workshop1Id}
+                  onChange={(e) => setWorkshop1Id(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Selecione a 1ª Oficina...</option>
+                  {(w1Options.length > 0 ? w1Options : workshops).map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.title} ({w.instructor})
+                    </option>
+                  ))}
+                </select>
 
-          <RatingInput label="Nota para a 2ª Oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
-        </div>
-      ),
-    },
+                <RatingInput label="Nota para a 1ª Oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
+              </div>
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            render: () => (
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
+                  2ª Oficina Participada
+                </label>
+                <select
+                  value={workshop2Id}
+                  onChange={(e) => setWorkshop2Id(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Selecione a 2ª Oficina...</option>
+                  {(w2Options.length > 0 ? w2Options : workshops).map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.title} ({w.instructor})
+                    </option>
+                  ))}
+                </select>
+
+                <RatingInput label="Nota para a 2ª Oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
+              </div>
+            ),
+          },
+        ]
+      : []),
     { section: 'moments', render: () => <RatingInput label="Momento Jovem" value={youthMomentRating} onChange={setYouthMomentRating} /> },
     { section: 'moments', render: () => <RatingInput label="Momento MFC Mirim" value={mirimMomentRating} onChange={setMirimMomentRating} /> },
     { section: 'moments', render: () => <RatingInput label="Animação & Músicas" value={animationRating} onChange={setAnimationRating} /> },
@@ -343,6 +378,25 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
             placeholder="Escreva aqui uma mensagem inspiradora ou conselho para os membros da sua paróquia/cidade..."
             value={recommendationText}
             onChange={(e) => setRecommendationText(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      ),
+    },
+    {
+      section: 'recommend',
+      render: () => (
+        <div>
+          <label className="text-sm font-semibold text-slate-800 block mb-1">
+            Em uma palavra ou frase, como você definiria o 5º EPA?
+          </label>
+          <p className="text-xs text-slate-500 mb-2">Ex: "Renovação", "Família em movimento", "Encontro com Deus"...</p>
+          <input
+            type="text"
+            maxLength={100}
+            placeholder="Escreva aqui..."
+            value={epaWord}
+            onChange={(e) => setEpaWord(e.target.value)}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -444,10 +498,11 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       infra_lodging_used: infraLodgingUsed,
       infra_lodging_rating: infraLodgingUsed ? infraLodgingRating : 0,
 
-      workshop1_id: workshop1Id !== '' ? Number(workshop1Id) : undefined,
-      workshop1_rating: workshop1Rating,
-      workshop2_id: workshop2Id !== '' ? Number(workshop2Id) : undefined,
-      workshop2_rating: workshop2Rating,
+      participated_workshops: !!participatedWorkshops,
+      workshop1_id: participatedWorkshops && workshop1Id !== '' ? Number(workshop1Id) : undefined,
+      workshop1_rating: participatedWorkshops ? workshop1Rating : undefined,
+      workshop2_id: participatedWorkshops && workshop2Id !== '' ? Number(workshop2Id) : undefined,
+      workshop2_rating: participatedWorkshops ? workshop2Rating : undefined,
 
       youth_moment_rating: youthMomentRating,
       mirim_moment_rating: mirimMomentRating,
@@ -458,6 +513,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
 
       recommendation_text: recommendationText,
       recommendation_nps: recommendationNps,
+      epa_word: epaWord,
       general_suggestions: generalSuggestions
     };
 
@@ -481,21 +537,43 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   };
 
   // ---------------------------------------------------------------------
-  // SPLASH — logo alone, animated entrance, before anything else shows
+  // SPLASH — animated entrance with glow + ring reveal, before anything else shows
   // ---------------------------------------------------------------------
   if (showSplash) {
     return (
-      <div className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden">
-        <motion.img
-          src={logoEpa}
-          alt="Logo 5º EPA Pirassununga"
-          className="w-48 h-48 sm:w-64 sm:h-64 object-contain drop-shadow-xl"
-          initial={{ scale: 0.3, opacity: 0, rotate: -15 }}
-          animate={{ scale: [0.3, 1.08, 1], opacity: 1, rotate: 0 }}
-          exit={{ scale: 1.15, opacity: 0 }}
-          transition={{ duration: 0.9, ease: 'easeOut', times: [0, 0.7, 1] }}
-        />
-      </div>
+      <AnimatePresence>
+        <motion.div
+          key="splash"
+          className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden relative"
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          {/* Expanding glow behind the logo */}
+          <motion.div
+            className="absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-blue-400/20 blur-3xl"
+            initial={{ scale: 0.2, opacity: 0 }}
+            animate={{ scale: [0.2, 1.3, 1], opacity: [0, 0.9, 0.6] }}
+            transition={{ duration: 1.4, ease: 'easeOut', times: [0, 0.6, 1] }}
+          />
+
+          {/* Rotating ring that "opens up" around the logo */}
+          <motion.div
+            className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full border-2 border-blue-500/40 border-t-transparent"
+            initial={{ scale: 0.4, opacity: 0, rotate: 0 }}
+            animate={{ scale: 1, opacity: [0, 1, 1, 0], rotate: 220 }}
+            transition={{ duration: 1.6, ease: 'easeOut', times: [0, 0.3, 0.75, 1] }}
+          />
+
+          <motion.img
+            src={logoEpa}
+            alt="Logo 5º EPA Pirassununga"
+            className="relative w-44 h-44 sm:w-60 sm:h-60 object-contain drop-shadow-xl"
+            initial={{ scale: 0.3, opacity: 0, rotate: -20 }}
+            animate={{ scale: [0.3, 1.1, 1], opacity: 1, rotate: 0 }}
+            transition={{ duration: 1, ease: 'easeOut', times: [0, 0.65, 1], delay: 0.1 }}
+          />
+        </motion.div>
+      </AnimatePresence>
     );
   }
 
@@ -671,7 +749,8 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
               <button
                 type="button"
                 onClick={goNext}
-                className="flex-1 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+                disabled={currentQuestion.isAnswered ? !currentQuestion.isAnswered() : false}
+                className="flex-1 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <span>Próxima</span>
                 <ArrowRight className="w-4 h-4" />

@@ -3,7 +3,7 @@ import { SurveyAverages } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Cell
 } from 'recharts';
-import { BarChart3, Star, Heart, ThumbsUp, ShieldCheck, Leaf, RefreshCw, Printer, MessageSquare, Quote, AlertCircle } from 'lucide-react';
+import { BarChart3, Star, Heart, ThumbsUp, ShieldCheck, Leaf, RefreshCw, Printer, MessageSquare, Quote, AlertCircle, Users, Sparkles } from 'lucide-react';
 import { authFetch } from '../lib/authFetch';
 
 export const AnalyticsDashboard: React.FC = () => {
@@ -57,12 +57,30 @@ export const AnalyticsDashboard: React.FC = () => {
 
   if (!data || data.total_surveys === 0) {
     return (
-      <div className="p-12 text-center text-slate-600 bg-white rounded-3xl border border-slate-200 space-y-4">
-        <BarChart3 className="w-12 h-12 mx-auto text-slate-300" />
-        <h3 className="text-xl font-bold text-slate-800">Nenhuma pesquisa respondida ainda</h3>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
-          Assim que os participantes enviarem o formulário anônimo, os gráficos e dados estatísticos serão gerados automaticamente.
-        </p>
+      <div className="space-y-5 sm:space-y-8">
+        {data && data.total_participants > 0 && (
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl border border-slate-800 text-white flex items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] sm:text-xs font-bold mb-2">
+                <Users className="w-3.5 h-3.5" />
+                <span>Adesão à Pesquisa</span>
+              </div>
+              <p className="text-2xl sm:text-3xl font-black">
+                0 <span className="text-slate-400 text-base sm:text-lg font-bold">/ {data.total_participants} inscritos</span>
+              </p>
+              <p className="text-slate-400 text-xs sm:text-sm mt-1">Meta: 80% dos inscritos respondendo a avaliação</p>
+            </div>
+            <span className="text-3xl sm:text-4xl font-black text-amber-400">0%</span>
+          </div>
+        )}
+
+        <div className="p-12 text-center text-slate-600 bg-white rounded-3xl border border-slate-200 space-y-4">
+          <BarChart3 className="w-12 h-12 mx-auto text-slate-300" />
+          <h3 className="text-xl font-bold text-slate-800">Nenhuma pesquisa respondida ainda</h3>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+            Assim que os participantes enviarem o formulário anônimo, os gráficos e dados estatísticos serão gerados automaticamente.
+          </p>
+        </div>
       </div>
     );
   }
@@ -135,6 +153,41 @@ export const AnalyticsDashboard: React.FC = () => {
             <Printer className="w-3.5 h-3.5" />
             <span>Imprimir</span>
           </button>
+        </div>
+      </div>
+
+      {/* Response Rate Banner: enrolled participants vs surveys answered, with an 80% goal */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl border border-slate-800 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] sm:text-xs font-bold mb-2">
+              <Users className="w-3.5 h-3.5" />
+              <span>Adesão à Pesquisa</span>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black">
+              {data.total_surveys} <span className="text-slate-400 text-base sm:text-lg font-bold">/ {data.total_participants} inscritos</span>
+            </p>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">
+              Meta: 80% dos inscritos respondendo a avaliação
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center sm:items-end gap-2 min-w-[140px]">
+            <span className={`text-3xl sm:text-4xl font-black ${data.response_rate >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {data.response_rate}%
+            </span>
+            <div className="w-full sm:w-40 h-2.5 bg-slate-700/60 rounded-full overflow-hidden relative">
+              {/* 80% goal marker */}
+              <div className="absolute top-0 bottom-0 w-0.5 bg-white/50" style={{ left: '80%' }} />
+              <div
+                className={`h-full rounded-full transition-all ${data.response_rate >= 80 ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                style={{ width: `${Math.min(data.response_rate, 100)}%` }}
+              />
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold">
+              {data.response_rate >= 80 ? 'Meta atingida! 🎉' : `Faltam ${Math.max(0, Math.round((data.total_participants * 0.8) - data.total_surveys))} respostas para a meta`}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -268,6 +321,30 @@ export const AnalyticsDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* "In one word" cloud */}
+      {data.epa_words.length > 0 && (
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">O 5º EPA em uma palavra</h3>
+              <p className="text-xs text-slate-500">Como os participantes definiram o encontro</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {data.epa_words.map((word, idx) => (
+              <span
+                key={idx}
+                className="px-3.5 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 font-bold text-xs sm:text-sm rounded-full"
+              >
+                {word}
+              </span>
             ))}
           </div>
         </div>

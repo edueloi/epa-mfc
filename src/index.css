@@ -6,16 +6,28 @@
   --color-epa-night: #0f172a;
 }
 
-@keyframes epa-logo-bounce {
-  0%, 100% { transform: scale(1) translateY(0); }
-  50% { transform: scale(1.1) translateY(-3px); }
+@keyframes epa-logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
 }
 
-@keyframes epa-logo-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes epa-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes epa-glow-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.15); }
 }
 
 .animate-epa-loading {
-  animation: epa-logo-bounce 0.9s ease-in-out infinite, epa-logo-pulse 0.9s ease-in-out infinite;
+  animation: epa-logo-pulse 1.1s ease-in-out infinite;
+}
+
+.epa-loading-ring {
+  animation: epa-ring-spin 1.1s linear infinite;
+}
+
+.epa-loading-glow {
+  animation: epa-glow-pulse 1.6s ease-in-out infinite;
 }

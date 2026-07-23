@@ -136,24 +136,16 @@ export default function App() {
 
       <Route
         path="/pesquisa-epa"
-        element={
-          <>
-            <SurveyFormPage onSuccess={() => navigate('/obrigado')} />
-            <InstallAppBanner />
-          </>
-        }
+        element={<SurveyFormPage onSuccess={() => navigate('/obrigado')} />}
       />
 
       <Route
         path="/obrigado"
         element={
-          <>
-            <ThankYouScreen
-              onGoToAnalytics={() => navigate(isLoggedIn ? '/graficos' : '/login')}
-              onGoHome={() => navigate(isLoggedIn ? '/oficinas' : '/login')}
-            />
-            <InstallAppBanner />
-          </>
+          <ThankYouScreen
+            onGoToAnalytics={() => navigate(isLoggedIn ? '/graficos' : '/login')}
+            onGoHome={() => navigate(isLoggedIn ? '/oficinas' : '/login')}
+          />
         }
       />
 

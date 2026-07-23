@@ -154,10 +154,11 @@ async function initTables(database: Pool) {
       infra_tech INT NOT NULL DEFAULT 5,
       infra_lodging_used INT NOT NULL DEFAULT 1,
       infra_lodging_rating INT DEFAULT 5,
+      participated_workshops INT NOT NULL DEFAULT 1,
       workshop1_id INT,
-      workshop1_rating INT DEFAULT 5,
+      workshop1_rating INT DEFAULT NULL,
       workshop2_id INT,
-      workshop2_rating INT DEFAULT 5,
+      workshop2_rating INT DEFAULT NULL,
       youth_moment_rating INT DEFAULT 5,
       mirim_moment_rating INT DEFAULT 5,
       animation_rating INT DEFAULT 5,
@@ -166,11 +167,27 @@ async function initTables(database: Pool) {
       eco_friendly_rating INT DEFAULT 5,
       recommendation_text TEXT,
       recommendation_nps INT DEFAULT 10,
+      epa_word VARCHAR(255),
       general_suggestions TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
+  // Migration: older deployments may be missing the newer survey columns.
+  const surveyColumnsToAdd = [
+    { name: 'participated_workshops', ddl: 'ADD COLUMN participated_workshops INT NOT NULL DEFAULT 1' },
+    { name: 'epa_word', ddl: 'ADD COLUMN epa_word VARCHAR(255)' },
+  ];
+  for (const col of surveyColumnsToAdd) {
+    const [existsRows] = await database.query<RowDataPacket[]>(`
+      SELECT COUNT(*) as count FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'surveys' AND column_name = ?
+    `, [col.name]);
+    if ((existsRows[0]?.count || 0) === 0) {
+      await database.query(`ALTER TABLE surveys ${col.ddl}`);
+      console.log(`✓ Migração: coluna surveys.${col.name} adicionada.`);
+    }
+  }
 }
 
 export async function seedInitialData(database: Pool) {
