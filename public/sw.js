@@ -1,5 +1,5 @@
-const CACHE_NAME = 'epa-pirassununga-v1';
-const APP_SHELL = ['/', '/manifest.json', '/pwa-192.png', '/pwa-512.png'];
+const CACHE_NAME = 'epa-pirassununga-v2';
+const APP_SHELL = ['/manifest.json', '/pwa-192.png', '/pwa-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -28,19 +28,37 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App shell / static assets: cache-first, falling back to network.
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
+  // Navigations (the HTML shell) and any request without a content hash in the
+  // filename: network-first, so a new deploy is picked up immediately instead
+  // of being stuck on a cached index.html pointing at stale JS/CSS bundles.
+  const isHashedAsset = /-[A-Za-z0-9_]{6,}\.(js|css)$/.test(url.pathname);
+
+  if (request.mode === 'navigate' || !isHashedAsset) {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          if (response.ok && request.method === 'GET') {
+          if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Hashed build assets: cache-first, since the filename changes on every build.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      });
     })
   );
 });
