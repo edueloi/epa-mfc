@@ -185,6 +185,11 @@ export const AttendanceManager: React.FC = () => {
   // Cities list (for the filter bar, derived from actually-enrolled participants)
   const enrolledCities = Array.from(new Set(participants.map(p => p.city))).filter(Boolean);
 
+  // Each workshop theme has two occurrences (one per time slot) — split them so the
+  // "1ª Oficina" and "2ª Oficina" selects only ever show the matching occurrence.
+  const w1Options = workshops.filter(w => w.time_slot.startsWith('1ª'));
+  const w2Options = workshops.filter(w => w.time_slot.startsWith('2ª'));
+
   // Filtered participants
   const filtered = participants.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -597,7 +602,7 @@ export const AttendanceManager: React.FC = () => {
                   className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 >
                   <option value="">Nenhuma / A definir</option>
-                  {workshops.map(w => (
+                  {w1Options.map(w => (
                     <option key={w.id} value={w.id}>{w.title}</option>
                   ))}
                 </select>
@@ -611,7 +616,7 @@ export const AttendanceManager: React.FC = () => {
                   className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 >
                   <option value="">Nenhuma / A definir</option>
-                  {workshops.map(w => (
+                  {w2Options.map(w => (
                     <option key={w.id} value={w.id}>{w.title}</option>
                   ))}
                 </select>
