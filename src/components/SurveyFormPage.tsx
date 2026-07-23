@@ -110,6 +110,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   const questions: Question[] = [
     {
       section: 'prep',
+      isAnswered: () => preStudyRating > 0,
       render: () => (
         <RatingInput
           label="Estudo Pré EPA"
@@ -124,6 +125,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'prep',
+      isAnswered: () => marketingRating > 0,
       render: () => (
         <RatingInput
           label="Divulgação do 5º EPA na sua cidade"
@@ -138,6 +140,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'reception',
+      isAnswered: () => welcomeRating > 0,
       render: () => (
         <RatingInput
           label="Acolhida"
@@ -149,6 +152,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'reception',
+      isAnswered: () => checkinRating > 0,
       render: () => (
         <RatingInput
           label="Credenciamento"
@@ -158,12 +162,13 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
         />
       ),
     },
-    { section: 'infra', render: () => <RatingInput label="Acomodação geral" value={infraAccommodation} onChange={setInfraAccommodation} /> },
-    { section: 'infra', render: () => <RatingInput label="Café da Manhã" value={infraBreakfast} onChange={setInfraBreakfast} /> },
-    { section: 'infra', render: () => <RatingInput label="Almoço" value={infraLunch} onChange={setInfraLunch} /> },
-    { section: 'infra', render: () => <RatingInput label="Jantar" value={infraDinner} onChange={setInfraDinner} /> },
+    { section: 'infra', isAnswered: () => infraAccommodation > 0, render: () => <RatingInput label="Acomodação geral" value={infraAccommodation} onChange={setInfraAccommodation} /> },
+    { section: 'infra', isAnswered: () => infraBreakfast > 0, render: () => <RatingInput label="Café da Manhã" value={infraBreakfast} onChange={setInfraBreakfast} /> },
+    { section: 'infra', isAnswered: () => infraLunch > 0, render: () => <RatingInput label="Almoço" value={infraLunch} onChange={setInfraLunch} /> },
+    { section: 'infra', isAnswered: () => infraDinner > 0, render: () => <RatingInput label="Jantar" value={infraDinner} onChange={setInfraDinner} /> },
     {
       section: 'infra',
+      isAnswered: () => infraRestrooms > 0,
       render: () => (
         <RatingInput
           label="Banheiros"
@@ -175,6 +180,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'infra',
+      isAnswered: () => infraTech > 0,
       render: () => (
         <RatingInput
           label="Recursos Tecnológicos"
@@ -186,6 +192,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'infra',
+      isAnswered: () => !infraLodgingUsed || infraLodgingRating > 0,
       render: () => (
         <div className="space-y-4">
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -266,6 +273,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       ? [
           {
             section: 'workshops' as SectionId,
+            isAnswered: () => workshop1Id !== '' && workshop1Rating > 0,
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
@@ -290,6 +298,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
           },
           {
             section: 'workshops' as SectionId,
+            isAnswered: () => workshop2Id !== '' && workshop2Rating > 0,
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
@@ -314,12 +323,13 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
           },
         ]
       : []),
-    { section: 'moments', render: () => <RatingInput label="Momento Jovem" value={youthMomentRating} onChange={setYouthMomentRating} /> },
-    { section: 'moments', render: () => <RatingInput label="Momento MFC Mirim" value={mirimMomentRating} onChange={setMirimMomentRating} /> },
-    { section: 'moments', render: () => <RatingInput label="Animação & Músicas" value={animationRating} onChange={setAnimationRating} /> },
-    { section: 'liturgy', render: () => <RatingInput label="Missa do EPA" sublabel="Celebração Eucarística." value={massRating} onChange={setMassRating} /> },
+    { section: 'moments', isAnswered: () => youthMomentRating > 0, render: () => <RatingInput label="Momento Jovem" value={youthMomentRating} onChange={setYouthMomentRating} /> },
+    { section: 'moments', isAnswered: () => mirimMomentRating > 0, render: () => <RatingInput label="Momento MFC Mirim" value={mirimMomentRating} onChange={setMirimMomentRating} /> },
+    { section: 'moments', isAnswered: () => animationRating > 0, render: () => <RatingInput label="Animação & Músicas" value={animationRating} onChange={setAnimationRating} /> },
+    { section: 'liturgy', isAnswered: () => massRating > 0, render: () => <RatingInput label="Missa do EPA" sublabel="Celebração Eucarística." value={massRating} onChange={setMassRating} /> },
     {
       section: 'liturgy',
+      isAnswered: () => liturgyRating > 0,
       render: () => (
         <RatingInput
           label="Liturgias & Orações"
@@ -331,6 +341,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'liturgy',
+      isAnswered: () => ecoFriendlyRating > 0,
       render: () => (
         <RatingInput
           label="Respeito aos Recursos Naturais"
@@ -342,6 +353,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'recommend',
+      isAnswered: () => true,
       render: () => (
         <div>
           <label className="text-sm font-bold text-slate-800 block mb-1">
@@ -368,6 +380,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'recommend',
+      isAnswered: () => recommendationText.trim().length > 0,
       render: () => (
         <div>
           <label className="text-sm font-semibold text-slate-800 block mb-1">
@@ -385,6 +398,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'recommend',
+      isAnswered: () => epaWord.trim().length > 0,
       render: () => (
         <div>
           <label className="text-sm font-semibold text-slate-800 block mb-1">
@@ -404,6 +418,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'suggestions',
+      isAnswered: () => generalSuggestions.trim().length > 0,
       render: () => (
         <textarea
           rows={5}

@@ -125,7 +125,7 @@ export const WorkshopsView: React.FC = () => {
         body: JSON.stringify({
           title: newTitle,
           instructor: newInstructor,
-          location: newLocation || 'Sala Principal',
+          location: newLocation || 'Pirassununga',
           time_slots: timeSlots,
           max_slots: 35
         })
@@ -173,8 +173,8 @@ export const WorkshopsView: React.FC = () => {
   };
 
   const filteredWorkshops = workshops.filter(w => {
-    if (timeFilter !== 'ALL' && w.time_slot !== timeFilter) return false;
-    return true;
+    if (timeFilter === 'ALL') return true;
+    return w.time_slot.startsWith(timeFilter === '1ª Oficina' ? '1ª' : '2ª');
   });
 
   const selectedWorkshop = workshops.find(w => w.id === selectedWorkshopId) || filteredWorkshops[0];
