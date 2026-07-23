@@ -16,6 +16,44 @@ interface SurveyFormPageProps {
 
 type SectionId = 'prep' | 'reception' | 'infra' | 'workshops' | 'moments' | 'liturgy' | 'recommend' | 'suggestions' | 'consent';
 
+// Fixed set of firework burst origins/colors for the splash "typing" screen —
+// deterministic so the animation looks the same every load, no Math.random() needed.
+const FIREWORKS = [
+  { x: '18%', y: '22%', color: '#2563eb', delay: 0.1 },
+  { x: '82%', y: '20%', color: '#f59e0b', delay: 0.3 },
+  { x: '25%', y: '75%', color: '#4f46e5', delay: 0.55 },
+  { x: '78%', y: '72%', color: '#ec4899', delay: 0.2 },
+  { x: '50%', y: '12%', color: '#10b981', delay: 0.45 },
+  { x: '10%', y: '48%', color: '#f59e0b', delay: 0.65 },
+  { x: '90%', y: '50%', color: '#2563eb', delay: 0.35 },
+];
+
+const FIREWORK_PARTICLE_ANGLES = Array.from({ length: 10 }, (_, i) => (i * 360) / 10);
+
+const Firework: React.FC<{ x: string; y: string; color: string; delay: number }> = ({ x, y, color, delay }) => (
+  <div className="absolute" style={{ left: x, top: y }}>
+    {FIREWORK_PARTICLE_ANGLES.map((angle, i) => {
+      const rad = (angle * Math.PI) / 180;
+      const distance = 46;
+      return (
+        <motion.span
+          key={i}
+          className="absolute w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: color, top: 0, left: 0 }}
+          initial={{ x: 0, y: 0, opacity: 0, scale: 0.5 }}
+          animate={{
+            x: Math.cos(rad) * distance,
+            y: Math.sin(rad) * distance,
+            opacity: [0, 1, 0],
+            scale: [0.5, 1, 0.3],
+          }}
+          transition={{ duration: 0.9, delay, ease: 'easeOut', repeat: Infinity, repeatDelay: 1.3 }}
+        />
+      );
+    })}
+  </div>
+);
+
 const SECTION_META: Record<SectionId, { icon: React.ReactNode; iconBg: string; title: string }> = {
   prep: { icon: <BookOpen className="w-5 h-5" />, iconBg: 'bg-blue-100 text-blue-800', title: 'Preparação & Divulgação' },
   reception: { icon: <HeartHandshake className="w-5 h-5" />, iconBg: 'bg-indigo-100 text-indigo-800', title: 'Recepção & Credenciamento' },
@@ -30,6 +68,9 @@ const SECTION_META: Record<SectionId, { icon: React.ReactNode; iconBg: string; t
 
 export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => {
   const [showSplash, setShowSplash] = useState(true);
+  const [splashPhase, setSplashPhase] = useState<'typing' | 'logo'>('typing');
+  const [typedText, setTypedText] = useState('');
+  const SPLASH_WORD = 'EPAAAAAAAA!';
   const [started, setStarted] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -39,8 +80,18 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 1400);
-    return () => clearTimeout(timer);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Type out "EPAAAAAAAA!" one letter at a time.
+    for (let i = 1; i <= SPLASH_WORD.length; i++) {
+      timers.push(setTimeout(() => setTypedText(SPLASH_WORD.slice(0, i)), 90 * i));
+    }
+
+    const typingDuration = 90 * SPLASH_WORD.length;
+    timers.push(setTimeout(() => setSplashPhase('logo'), typingDuration + 350));
+    timers.push(setTimeout(() => setShowSplash(false), typingDuration + 350 + 2200));
+
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   // Form State
@@ -556,38 +607,62 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
   // ---------------------------------------------------------------------
   if (showSplash) {
     return (
-      <AnimatePresence>
-        <motion.div
-          key="splash"
-          className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden relative"
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          {/* Expanding glow behind the logo */}
+      <AnimatePresence mode="wait">
+        {splashPhase === 'typing' ? (
           <motion.div
-            className="absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-blue-400/20 blur-3xl"
-            initial={{ scale: 0.2, opacity: 0 }}
-            animate={{ scale: [0.2, 1.3, 1], opacity: [0, 0.9, 0.6] }}
-            transition={{ duration: 1.4, ease: 'easeOut', times: [0, 0.6, 1] }}
-          />
+            key="typing"
+            className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden relative"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            {FIREWORKS.map((fw, i) => (
+              <Firework key={i} {...fw} />
+            ))}
 
-          {/* Rotating ring that "opens up" around the logo */}
+            <h1 className="relative z-10 text-5xl sm:text-7xl font-black tracking-tight text-blue-600 flex items-center">
+              <span>{typedText}</span>
+              <motion.span
+                className="inline-block w-1.5 sm:w-2 h-11 sm:h-16 bg-blue-600 ml-1.5"
+                animate={{ opacity: [1, 1, 0, 0] }}
+                transition={{ duration: 0.8, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
+              />
+            </h1>
+          </motion.div>
+        ) : (
           <motion.div
-            className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full border-2 border-blue-500/40 border-t-transparent"
-            initial={{ scale: 0.4, opacity: 0, rotate: 0 }}
-            animate={{ scale: 1, opacity: [0, 1, 1, 0], rotate: 220 }}
-            transition={{ duration: 1.6, ease: 'easeOut', times: [0, 0.3, 0.75, 1] }}
-          />
+            key="splash"
+            className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Expanding glow behind the logo */}
+            <motion.div
+              className="absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-blue-400/20 blur-3xl"
+              initial={{ scale: 0.2, opacity: 0 }}
+              animate={{ scale: [0.2, 1.3, 1], opacity: [0, 0.9, 0.6] }}
+              transition={{ duration: 1.8, ease: 'easeOut', times: [0, 0.6, 1] }}
+            />
 
-          <motion.img
-            src={logoEpa}
-            alt="Logo 5º EPA Pirassununga"
-            className="relative w-44 h-44 sm:w-60 sm:h-60 object-contain drop-shadow-xl"
-            initial={{ scale: 0.3, opacity: 0, rotate: -20 }}
-            animate={{ scale: [0.3, 1.1, 1], opacity: 1, rotate: 0 }}
-            transition={{ duration: 1, ease: 'easeOut', times: [0, 0.65, 1], delay: 0.1 }}
-          />
-        </motion.div>
+            {/* Rotating ring that "opens up" around the logo */}
+            <motion.div
+              className="absolute w-44 h-44 sm:w-56 sm:h-56 rounded-full border-2 border-blue-500/40 border-t-transparent"
+              initial={{ scale: 0.4, opacity: 0, rotate: 0 }}
+              animate={{ scale: 1, opacity: [0, 1, 1, 0], rotate: 220 }}
+              transition={{ duration: 2.1, ease: 'easeOut', times: [0, 0.3, 0.75, 1] }}
+            />
+
+            <motion.img
+              src={logoEpa}
+              alt="Logo 5º EPA Pirassununga"
+              className="relative w-44 h-44 sm:w-60 sm:h-60 object-contain drop-shadow-xl"
+              initial={{ scale: 0.3, opacity: 0, rotate: -20 }}
+              animate={{ scale: [0.3, 1.12, 1], opacity: 1, rotate: 0 }}
+              transition={{ duration: 1.3, ease: 'easeOut', times: [0, 0.65, 1], delay: 0.1 }}
+            />
+          </motion.div>
+        )}
       </AnimatePresence>
     );
   }
