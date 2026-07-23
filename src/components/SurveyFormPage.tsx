@@ -83,13 +83,14 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // Type out "EPAAAAAAAA!" one letter at a time.
+    const LETTER_DELAY_MS = 220;
     for (let i = 1; i <= SPLASH_WORD.length; i++) {
-      timers.push(setTimeout(() => setTypedText(SPLASH_WORD.slice(0, i)), 90 * i));
+      timers.push(setTimeout(() => setTypedText(SPLASH_WORD.slice(0, i)), LETTER_DELAY_MS * i));
     }
 
-    const typingDuration = 90 * SPLASH_WORD.length;
-    timers.push(setTimeout(() => setSplashPhase('logo'), typingDuration + 350));
-    timers.push(setTimeout(() => setShowSplash(false), typingDuration + 350 + 2200));
+    const typingDuration = LETTER_DELAY_MS * SPLASH_WORD.length;
+    timers.push(setTimeout(() => setSplashPhase('logo'), typingDuration + 600));
+    timers.push(setTimeout(() => setShowSplash(false), typingDuration + 600 + 2200));
 
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -619,10 +620,22 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
               <Firework key={i} {...fw} />
             ))}
 
-            <h1 className="relative z-10 text-5xl sm:text-7xl font-black tracking-tight text-blue-600 flex items-center">
-              <span>{typedText}</span>
+            <h1
+              className="relative z-10 text-6xl sm:text-8xl font-black tracking-tighter text-slate-900 flex items-center italic"
+              style={{ textShadow: '0 4px 24px rgba(37, 99, 235, 0.25)' }}
+            >
+              {typedText.split('').map((char, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 12, scale: 0.7 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.25, ease: 'backOut' }}
+                >
+                  {char}
+                </motion.span>
+              ))}
               <motion.span
-                className="inline-block w-1.5 sm:w-2 h-11 sm:h-16 bg-blue-600 ml-1.5"
+                className="inline-block w-2 sm:w-2.5 h-12 sm:h-20 bg-blue-600 ml-2"
                 animate={{ opacity: [1, 1, 0, 0] }}
                 transition={{ duration: 0.8, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
               />

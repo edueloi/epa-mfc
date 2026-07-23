@@ -21,13 +21,13 @@
 }
 
 .animate-epa-loading {
-  animation: epa-logo-pulse 1.1s ease-in-out infinite;
+  animation: epa-logo-pulse 1.8s ease-in-out infinite;
 }
 
 .epa-loading-ring {
-  animation: epa-ring-spin 1.1s linear infinite;
+  animation: epa-ring-spin 2.2s linear infinite;
 }
 
 .epa-loading-glow {
-  animation: epa-glow-pulse 1.6s ease-in-out infinite;
+  animation: epa-glow-pulse 2.6s ease-in-out infinite;
 }
