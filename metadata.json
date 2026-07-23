@@ -1,0 +1,6 @@
+{
+  "name": "Sistema EPA Pirassununga",
+  "description": "Sistema de Gestão do 5º EPA em Pirassununga: Controle de Presença em Oficinas, Formulário de Pesquisa Anônima e Dashboard Estatístico.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
