@@ -1,0 +1,32 @@
+{
+  "name": "5º EPA Pirassununga - MFC",
+  "short_name": "EPA Pirassununga",
+  "description": "Sistema de gestão de oficinas, chamada e pesquisa de satisfação do 5º Encontro Paulista do MFC em Pirassununga.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e3a8a",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

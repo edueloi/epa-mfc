@@ -3,20 +3,30 @@ import { SurveyAverages } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Cell
 } from 'recharts';
-import { BarChart3, Star, Heart, ThumbsUp, ShieldCheck, Leaf, RefreshCw, Printer, MessageSquare, Quote } from 'lucide-react';
+import { BarChart3, Star, Heart, ThumbsUp, ShieldCheck, Leaf, RefreshCw, Printer, MessageSquare, Quote, AlertCircle } from 'lucide-react';
+import { authFetch } from '../lib/authFetch';
 
 export const AnalyticsDashboard: React.FC = () => {
   const [data, setData] = useState<SurveyAverages | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAnalytics = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/surveys');
+      const res = await authFetch('/api/surveys');
       const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || 'Não foi possível carregar os dados estatísticos.');
+        setData(null);
+        return;
+      }
+
       setData(json);
     } catch (err) {
-      console.error('Erro ao buscar dados de analytics:', err);
+      setError('Não foi possível conectar ao servidor.');
     } finally {
       setLoading(false);
     }
@@ -29,8 +39,18 @@ export const AnalyticsDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="p-12 text-center text-slate-500 bg-white rounded-3xl border border-slate-200">
-        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500 mb-3" />
+        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-500 mb-3" />
         <p className="font-semibold text-sm">Carregando dados estatísticos do evento...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-12 text-center text-slate-600 bg-white rounded-3xl border border-slate-200 space-y-4">
+        <AlertCircle className="w-12 h-12 mx-auto text-rose-400" />
+        <h3 className="text-xl font-bold text-slate-800">Erro ao carregar dados</h3>
+        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">{error}</p>
       </div>
     );
   }
@@ -75,34 +95,34 @@ export const AnalyticsDashboard: React.FC = () => {
   ];
 
   // Colors
-  const COLORS = ['#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b'];
+  const COLORS = ['#2563eb', '#4f46e5', '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b'];
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="space-y-8 pb-16 print:p-0">
-      
+    <div className="space-y-5 sm:space-y-8 pb-16 print:p-0">
+
       {/* Top Bar / Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold mb-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] sm:text-xs font-bold mb-1">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Resultados Consolidados</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Relatório Estatístico de Satisfação
+          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Relatório de Satisfação
           </h1>
-          <p className="text-slate-600 text-xs sm:text-sm">
+          <p className="hidden sm:block text-slate-600 text-xs sm:text-sm">
             Consolidado das avaliações do 5º EPA em Pirassununga
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2">
           <button
             onClick={fetchAnalytics}
-            className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-sm hover:bg-slate-50 flex items-center gap-1.5"
+            className="px-3.5 py-2.5 sm:py-2 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-sm hover:bg-slate-50 flex items-center justify-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Atualizar</span>
@@ -110,79 +130,79 @@ export const AnalyticsDashboard: React.FC = () => {
 
           <button
             onClick={handlePrint}
-            className="px-3.5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-slate-800 flex items-center gap-1.5"
+            className="px-3.5 py-2.5 sm:py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-slate-800 flex items-center justify-center gap-1.5"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Imprimir Relatório</span>
+            <span>Imprimir</span>
           </button>
         </div>
       </div>
 
       {/* Overview Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
         {/* Card 1: Total Responses */}
-        <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5" />
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <p className="text-xs font-semibold text-slate-500">Pesquisas Respondidas</p>
-          <p className="text-3xl font-black text-slate-900">{data.total_surveys}</p>
-          <span className="text-[10px] text-emerald-600 font-bold">100% Coleta Anônima</span>
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500">Pesquisas Respondidas</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900">{data.total_surveys}</p>
+          <span className="text-[9px] sm:text-[10px] text-blue-600 font-bold">100% Anônima</span>
         </div>
 
         {/* Card 2: Overall Score */}
-        <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-amber-500 text-amber-500" />
           </div>
-          <p className="text-xs font-semibold text-slate-500">Média Geral do Evento</p>
-          <p className="text-3xl font-black text-slate-900">{data.avg_overall_score} <span className="text-xs font-normal text-slate-400">/ 5.0</span></p>
-          <span className="text-[10px] text-amber-600 font-bold">{Math.round((data.avg_overall_score / 5) * 100)}% de Aprovação</span>
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500">Média Geral</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900">{data.avg_overall_score} <span className="text-xs font-normal text-slate-400">/5</span></p>
+          <span className="text-[9px] sm:text-[10px] text-amber-600 font-bold">{Math.round((data.avg_overall_score / 5) * 100)}% Aprovação</span>
         </div>
 
         {/* Card 3: NPS Score */}
-        <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center">
-            <ThumbsUp className="w-5 h-5" />
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <p className="text-xs font-semibold text-slate-500">Recomendação NPS</p>
-          <p className="text-3xl font-black text-slate-900">{data.nps_score} <span className="text-xs font-normal text-slate-400">/ 10</span></p>
-          <span className="text-[10px] text-teal-600 font-bold">Índice do Participante</span>
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500">Recomendação NPS</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900">{data.nps_score} <span className="text-xs font-normal text-slate-400">/10</span></p>
+          <span className="text-[9px] sm:text-[10px] text-indigo-600 font-bold">Índice do Participante</span>
         </div>
 
         {/* Card 4: Eco Score */}
-        <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-sm space-y-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-            <Leaf className="w-5 h-5" />
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center">
+            <Leaf className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <p className="text-xs font-semibold text-slate-500">Sustentabilidade</p>
-          <p className="text-3xl font-black text-slate-900">{averages.eco_friendly} <span className="text-xs font-normal text-slate-400">/ 5.0</span></p>
-          <span className="text-[10px] text-emerald-700 font-bold">Recursos Naturais & Descartáveis</span>
+          <p className="text-[10px] sm:text-xs font-semibold text-slate-500">Sustentabilidade</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900">{averages.eco_friendly} <span className="text-xs font-normal text-slate-400">/5</span></p>
+          <span className="text-[9px] sm:text-[10px] text-blue-700 font-bold">Recursos Naturais</span>
         </div>
 
       </div>
 
       {/* Main Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+
         {/* Chart 1: Categorias do Evento */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Satisfação por Atividade</h3>
-              <p className="text-xs text-slate-500">Avaliação das atividades do 5º EPA (escala 1 a 5)</p>
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">Satisfação por Atividade</h3>
+              <p className="hidden sm:block text-xs text-slate-500">Avaliação das atividades do 5º EPA (escala 1 a 5)</p>
             </div>
-            <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] sm:text-xs font-extrabold text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0">
               Média 1-5
             </span>
           </div>
 
-          <div className="h-72 w-full pt-2">
+          <div className="h-64 sm:h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
+              <BarChart data={categoryData} margin={{ top: 10, right: 5, left: -25, bottom: 45 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-25} textAnchor="end" />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} interval={0} angle={-45} textAnchor="end" />
                 <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: '#64748b' }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px', border: 'none' }}
@@ -199,28 +219,28 @@ export const AnalyticsDashboard: React.FC = () => {
         </div>
 
         {/* Chart 2: Infraestrutura */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Infraestrutura & Alimentação</h3>
-              <p className="text-xs text-slate-500">Avaliação das acomodações e refeições em Pirassununga</p>
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-sm space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">Infraestrutura & Alimentação</h3>
+              <p className="hidden sm:block text-xs text-slate-500">Avaliação das acomodações e refeições em Pirassununga</p>
             </div>
-            <span className="text-xs font-extrabold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] sm:text-xs font-extrabold text-indigo-600 bg-indigo-50 px-2 sm:px-2.5 py-1 rounded-full flex-shrink-0">
               Infraestrutura
             </span>
           </div>
 
-          <div className="h-72 w-full pt-2">
+          <div className="h-64 sm:h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={infraData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+              <BarChart data={infraData} layout="vertical" margin={{ top: 5, right: 15, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis type="number" domain={[0, 5]} tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#334155' }} width={85} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#334155' }} width={75} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px', border: 'none' }}
                   formatter={(val: any) => [`${val} / 5.0`, 'Nota Média']}
                 />
-                <Bar dataKey="score" fill="#14b8a6" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="score" fill="#4f46e5" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -230,15 +250,15 @@ export const AnalyticsDashboard: React.FC = () => {
 
       {/* Workshop Specific Ratings */}
       {data.workshop_ratings.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="font-bold text-slate-900 text-lg">Avaliação das Oficinas Ministradas</h3>
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-sm space-y-4 sm:space-y-6">
+          <div className="border-b border-slate-100 pb-3 sm:pb-4">
+            <h3 className="font-bold text-slate-900 text-base sm:text-lg">Avaliação das Oficinas</h3>
             <p className="text-xs text-slate-500">Média das notas dadas pelos participantes em cada oficina</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {data.workshop_ratings.map((ws) => (
-              <div key={ws.workshop_id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+              <div key={ws.workshop_id} className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                 <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1">{ws.workshop_title}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-slate-500">{ws.total_votes} votos</span>
@@ -254,13 +274,13 @@ export const AnalyticsDashboard: React.FC = () => {
       )}
 
       {/* Anonymous Testimonials & Suggestions Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+
         {/* Testimonials */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-sm space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Quote className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 text-base">Depoimentos & Recomendações</h3>
+            <Quote className="w-5 h-5 text-blue-600" />
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Depoimentos & Recomendações</h3>
           </div>
 
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
@@ -271,7 +291,7 @@ export const AnalyticsDashboard: React.FC = () => {
                 <div key={idx} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
                   <p className="text-xs text-slate-700 italic">"{t.text}"</p>
                   <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-semibold text-emerald-600">Recomendação NPS: {t.nps}/10</span>
+                    <span className="font-semibold text-blue-600">Recomendação NPS: {t.nps}/10</span>
                     <span>Anônimo</span>
                   </div>
                 </div>
@@ -281,10 +301,10 @@ export const AnalyticsDashboard: React.FC = () => {
         </div>
 
         {/* Suggestions */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-sm space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <MessageSquare className="w-5 h-5 text-teal-600" />
-            <h3 className="font-bold text-slate-900 text-base">Sugestões de Melhoria</h3>
+            <MessageSquare className="w-5 h-5 text-indigo-600" />
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Sugestões de Melhoria</h3>
           </div>
 
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">

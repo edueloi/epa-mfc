@@ -7,10 +7,23 @@ export interface Workshop {
   max_slots: number;
 }
 
+export interface City {
+  id: number;
+  name: string;
+}
+
+export interface Oficineiro {
+  id: number;
+  username: string;
+  workshop_id: number | null;
+  workshop_title?: string | null;
+}
+
 export interface Participant {
   id: number;
   name: string;
   city: string;
+  city_id?: number | null;
   family_group: string;
   workshop1_id?: number | null;
   workshop2_id?: number | null;

@@ -1,11 +1,28 @@
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import { getDb, saveDb, queryAll, queryOne, seedInitialData } from './src/server/db.js';
+import { getDb, queryAll, queryOne, run, seedInitialData } from './src/server/db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+interface SessionInfo {
+  username: string;
+  role: string;
+  workshopId: number | null;
+  expiresAt: number;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      session?: SessionInfo;
+    }
+  }
+}
+
+const activeSessions = new Map<string, SessionInfo>();
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
 
 async function startServer() {
   const app = express();
@@ -13,7 +30,7 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Initialize SQLite Database
+  // Initialize MySQL Database
   const db = await getDb();
 
   // API Routes
@@ -21,15 +38,205 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // GET Stats
-  app.get('/api/stats', (req, res) => {
+  // POST Login
+  app.post('/api/login', async (req, res) => {
     try {
-      const partRes = queryOne(db, 'SELECT COUNT(*) as count FROM participants');
-      const wsRes = queryOne(db, 'SELECT COUNT(*) as count FROM workshops');
-      const surRes = queryOne(db, 'SELECT COUNT(*) as count FROM surveys');
-      const presRes = queryOne(db, "SELECT COUNT(*) as count FROM attendance WHERE status = 'PRESENTE'");
-      const absRes = queryOne(db, "SELECT COUNT(*) as count FROM attendance WHERE status = 'FALTA'");
-      const npsRes = queryOne(db, 'SELECT AVG(recommendation_nps) as avg_nps FROM surveys');
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
+      }
+
+      const user = await queryOne(db, 'SELECT * FROM users WHERE username = ?', [username.trim()]);
+      if (!user) {
+        return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Usuário ou senha incorretos.' });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      activeSessions.set(token, {
+        username: user.username,
+        role: user.role,
+        workshopId: user.workshop_id || null,
+        expiresAt: Date.now() + SESSION_TTL_MS
+      });
+
+      res.json({
+        success: true,
+        token,
+        username: user.username,
+        role: user.role,
+        workshop_id: user.workshop_id || null
+      });
+    } catch (err: any) {
+      console.error('Erro /api/login:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST Logout
+  app.post('/api/logout', (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) activeSessions.delete(token);
+    res.json({ success: true });
+  });
+
+  // GET Session check
+  app.get('/api/session', (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const session = token ? activeSessions.get(token) : undefined;
+
+    if (!session || session.expiresAt < Date.now()) {
+      if (token) activeSessions.delete(token);
+      return res.status(401).json({ error: 'Sessão inválida ou expirada.' });
+    }
+
+    res.json({ username: session.username, role: session.role, workshop_id: session.workshopId });
+  });
+
+  // Middleware to protect organizer-only routes; attaches session info to req.session
+  const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const session = token ? activeSessions.get(token) : undefined;
+
+    if (!session || session.expiresAt < Date.now()) {
+      if (token) activeSessions.delete(token);
+      return res.status(401).json({ error: 'Sessão inválida ou expirada. Faça login novamente.' });
+    }
+
+    req.session = session;
+    next();
+  };
+
+  // Middleware to restrict a route to admins only (must run after requireAuth)
+  const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.session?.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas a organização (Admin) pode realizar esta ação.' });
+    }
+    next();
+  };
+
+  // Attaches session info to req.session when a valid token is present, but never blocks the request.
+  // Used by routes that are public (e.g. the anonymous survey listing workshops) but behave
+  // differently for a logged-in oficineiro (who should only see their own workshop).
+  const optionalAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const session = token ? activeSessions.get(token) : undefined;
+    if (session && session.expiresAt >= Date.now()) {
+      req.session = session;
+    }
+    next();
+  };
+
+  // GET Cities
+  app.get('/api/cities', async (req, res) => {
+    try {
+      const cities = await queryAll(db, 'SELECT * FROM cities ORDER BY name ASC');
+      res.json(cities);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST City (Admin only)
+  app.post('/api/cities', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { name } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Nome da cidade é obrigatório.' });
+      }
+
+      const existing = await queryOne(db, 'SELECT id FROM cities WHERE name = ?', [name.trim()]);
+      if (existing) {
+        return res.status(400).json({ error: 'Esta cidade já está cadastrada.' });
+      }
+
+      const result = await run(db, 'INSERT INTO cities (name) VALUES (?)', [name.trim()]);
+      res.json({ success: true, id: result.insertId });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE City (Admin only)
+  app.delete('/api/cities/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      await run(db, 'DELETE FROM cities WHERE id = ?', [req.params.id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST Oficineiro account (Admin only) — creates a login bound to a specific workshop
+  app.post('/api/oficineiros', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { username, password, workshop_id } = req.body;
+      if (!username || !password || !workshop_id) {
+        return res.status(400).json({ error: 'Usuário, senha e oficina são obrigatórios.' });
+      }
+
+      const workshop = await queryOne(db, 'SELECT id FROM workshops WHERE id = ?', [workshop_id]);
+      if (!workshop) {
+        return res.status(400).json({ error: 'Oficina não encontrada.' });
+      }
+
+      const existing = await queryOne(db, 'SELECT id FROM users WHERE username = ?', [username.trim()]);
+      if (existing) {
+        return res.status(400).json({ error: 'Já existe um usuário com este nome.' });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const result = await run(
+        db,
+        'INSERT INTO users (username, password_hash, role, workshop_id) VALUES (?, ?, ?, ?)',
+        [username.trim(), passwordHash, 'oficineiro', workshop_id]
+      );
+
+      res.json({ success: true, id: result.insertId });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET Oficineiro accounts (Admin only)
+  app.get('/api/oficineiros', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const rows = await queryAll(db, `
+        SELECT u.id, u.username, u.workshop_id, w.title as workshop_title
+        FROM users u
+        LEFT JOIN workshops w ON u.workshop_id = w.id
+        WHERE u.role = 'oficineiro'
+        ORDER BY u.username ASC
+      `);
+      res.json(rows);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE Oficineiro account (Admin only)
+  app.delete('/api/oficineiros/:id', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      await run(db, `DELETE FROM users WHERE id = ? AND role = 'oficineiro'`, [req.params.id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET Stats (Admin only)
+  app.get('/api/stats', requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const partRes = await queryOne(db, 'SELECT COUNT(*) as count FROM participants');
+      const wsRes = await queryOne(db, 'SELECT COUNT(*) as count FROM workshops');
+      const surRes = await queryOne(db, 'SELECT COUNT(*) as count FROM surveys');
+      const presRes = await queryOne(db, "SELECT COUNT(*) as count FROM attendance WHERE status = 'PRESENTE'");
+      const absRes = await queryOne(db, "SELECT COUNT(*) as count FROM attendance WHERE status = 'FALTA'");
+      const npsRes = await queryOne(db, 'SELECT AVG(recommendation_nps) as avg_nps FROM surveys');
 
       res.json({
         total_participants: partRes?.count || 0,
@@ -45,22 +252,30 @@ async function startServer() {
     }
   });
 
-  // GET Workshops with Participant Details & Attendance for Oficineiros
-  app.get('/api/workshops', (req, res) => {
+  // GET Workshops with Participant Details & Attendance for Oficineiros.
+  // Public (used by the anonymous survey to list workshops), but a logged-in
+  // oficineiro (non-admin) only sees their own assigned workshop.
+  app.get('/api/workshops', optionalAuth, async (req, res) => {
     try {
-      const workshops = queryAll(db, `
-        SELECT w.*, 
+      const isOficineiro = req.session?.role === 'oficineiro';
+      const workshopFilter = isOficineiro ? 'WHERE w.id = ?' : '';
+      const filterParams = isOficineiro ? [req.session!.workshopId] : [];
+
+      const workshops = await queryAll(db, `
+        SELECT w.*,
           (SELECT COUNT(*) FROM attendance a WHERE a.workshop_id = w.id AND a.status = 'PRESENTE') as present_count,
           (SELECT COUNT(*) FROM attendance a WHERE a.workshop_id = w.id AND a.status = 'FALTA') as absent_count
         FROM workshops w
+        ${workshopFilter}
         ORDER BY w.time_slot, w.id
-      `);
+      `, filterParams);
 
       // Attach participants list to each workshop for oficineiros
-      const fullWorkshops = workshops.map(w => {
-        const parts = queryAll(db, `
-          SELECT p.id, p.name, p.city, p.family_group, a.status as attendance_status
+      const fullWorkshops = await Promise.all(workshops.map(async w => {
+        const parts = await queryAll(db, `
+          SELECT p.id, p.name, c.name as city, p.family_group, a.status as attendance_status
           FROM participants p
+          LEFT JOIN cities c ON p.city_id = c.id
           LEFT JOIN attendance a ON a.participant_id = p.id AND a.workshop_id = ?
           WHERE p.workshop1_id = ? OR p.workshop2_id = ?
           ORDER BY p.name ASC
@@ -71,7 +286,7 @@ async function startServer() {
           total_enrolled: parts.length,
           participants: parts
         };
-      });
+      }));
 
       res.json(fullWorkshops);
     } catch (err: any) {
@@ -79,38 +294,39 @@ async function startServer() {
     }
   });
 
-  // POST Workshop
-  app.post('/api/workshops', (req, res) => {
+  // POST Workshop (Admin only)
+  app.post('/api/workshops', requireAuth, requireAdmin, async (req, res) => {
     try {
       const { title, instructor, location, time_slot, max_slots } = req.body;
       if (!title || !instructor || !location) {
         return res.status(400).json({ error: 'Título, oficineiro e local são obrigatórios.' });
       }
 
-      db.run(
+      const result = await run(
+        db,
         `INSERT INTO workshops (title, instructor, location, time_slot, max_slots) VALUES (?, ?, ?, ?, ?)`,
         [title, instructor, location, time_slot || '1ª Oficina', max_slots || 30]
       );
-      saveDb();
 
-      const newId = queryOne(db, 'SELECT last_insert_rowid() as id')?.id;
-      res.json({ success: true, id: newId });
+      res.json({ success: true, id: result.insertId });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
   // GET Participants with Workshops & Attendance Status
-  app.get('/api/participants', (req, res) => {
+  app.get('/api/participants', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const rows = queryAll(db, `
-        SELECT 
+      const rows = await queryAll(db, `
+        SELECT
           p.*,
+          c.name as city,
           w1.title as workshop1_title,
           w2.title as workshop2_title,
           a1.status as attendance1_status,
           a2.status as attendance2_status
         FROM participants p
+        LEFT JOIN cities c ON p.city_id = c.id
         LEFT JOIN workshops w1 ON p.workshop1_id = w1.id
         LEFT JOIN workshops w2 ON p.workshop2_id = w2.id
         LEFT JOIN attendance a1 ON p.id = a1.participant_id AND p.workshop1_id = a1.workshop_id
@@ -123,54 +339,56 @@ async function startServer() {
     }
   });
 
-  // POST Participant
-  app.post('/api/participants', (req, res) => {
+  // POST Participant (Admin only)
+  app.post('/api/participants', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const { name, city, family_group, workshop1_id, workshop2_id } = req.body;
-      if (!name || !city) {
+      const { name, city_id, family_group, workshop1_id, workshop2_id } = req.body;
+      if (!name || !city_id) {
         return res.status(400).json({ error: 'Nome e Cidade são obrigatórios.' });
       }
 
-      db.run(
-        `INSERT INTO participants (name, city, family_group, workshop1_id, workshop2_id) VALUES (?, ?, ?, ?, ?)`,
-        [name, city, family_group || 'Família MFC', workshop1_id || null, workshop2_id || null]
+      const result = await run(
+        db,
+        `INSERT INTO participants (name, city_id, family_group, workshop1_id, workshop2_id) VALUES (?, ?, ?, ?, ?)`,
+        [name, city_id, family_group || 'Família MFC', workshop1_id || null, workshop2_id || null]
       );
-      saveDb();
 
-      const newId = queryOne(db, 'SELECT last_insert_rowid() as id')?.id;
-      res.json({ success: true, id: newId });
+      res.json({ success: true, id: result.insertId });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // DELETE Participant
-  app.delete('/api/participants/:id', (req, res) => {
+  // DELETE Participant (Admin only)
+  app.delete('/api/participants/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      db.run(`DELETE FROM attendance WHERE participant_id = ?`, [id]);
-      db.run(`DELETE FROM participants WHERE id = ?`, [id]);
-      saveDb();
+      await run(db, `DELETE FROM attendance WHERE participant_id = ?`, [id]);
+      await run(db, `DELETE FROM participants WHERE id = ?`, [id]);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // POST Attendance (Presença / Falta)
-  app.post('/api/attendance', (req, res) => {
+  // POST Attendance (Presença / Falta) — an oficineiro may only mark attendance for their own workshop
+  app.post('/api/attendance', requireAuth, async (req, res) => {
     try {
       const { participant_id, workshop_id, status } = req.body;
       if (!participant_id || !workshop_id || !['PRESENTE', 'FALTA'].includes(status)) {
         return res.status(400).json({ error: 'Parâmetros inválidos para chamada.' });
       }
 
-      db.run(
+      if (req.session?.role === 'oficineiro' && req.session.workshopId !== Number(workshop_id)) {
+        return res.status(403).json({ error: 'Você só pode marcar presença na sua própria oficina.' });
+      }
+
+      await run(
+        db,
         `INSERT INTO attendance (participant_id, workshop_id, status) VALUES (?, ?, ?)
-         ON CONFLICT(participant_id, workshop_id) DO UPDATE SET status = excluded.status, marked_at = CURRENT_TIMESTAMP`,
+         ON DUPLICATE KEY UPDATE status = VALUES(status), marked_at = CURRENT_TIMESTAMP`,
         [participant_id, workshop_id, status]
       );
-      saveDb();
 
       res.json({ success: true });
     } catch (err: any) {
@@ -178,10 +396,10 @@ async function startServer() {
     }
   });
 
-  // GET Survey Averages & Dashboard Data
-  app.get('/api/surveys', (req, res) => {
+  // GET Survey Averages & Dashboard Data (Admin only)
+  app.get('/api/surveys', requireAuth, requireAdmin, async (req, res) => {
     try {
-      const countRes = queryOne(db, 'SELECT COUNT(*) as total FROM surveys');
+      const countRes = await queryOne(db, 'SELECT COUNT(*) as total FROM surveys');
       const total = countRes?.total || 0;
 
       if (total === 0) {
@@ -201,8 +419,8 @@ async function startServer() {
         });
       }
 
-      const avgs = queryOne(db, `
-        SELECT 
+      const avgs = await queryOne(db, `
+        SELECT
           AVG(pre_study_rating) as pre_study,
           AVG(marketing_rating) as marketing,
           AVG(welcome_rating) as welcome,
@@ -224,17 +442,17 @@ async function startServer() {
         FROM surveys
       `);
 
-      const workshops = queryAll(db, 'SELECT * FROM workshops');
-      const workshop_ratings = workshops.map(w => {
-        const r = queryOne(db, `
-          SELECT 
+      const workshops = await queryAll(db, 'SELECT * FROM workshops');
+      const workshop_ratings = await Promise.all(workshops.map(async w => {
+        const r = await queryOne(db, `
+          SELECT
             AVG(rating) as avg_rating,
             COUNT(*) as total_votes
           FROM (
             SELECT workshop1_rating as rating FROM surveys WHERE workshop1_id = ?
             UNION ALL
             SELECT workshop2_rating as rating FROM surveys WHERE workshop2_id = ?
-          )
+          ) t
         `, [w.id, w.id]);
 
         return {
@@ -243,16 +461,16 @@ async function startServer() {
           avg_rating: Math.round((r?.avg_rating || 0) * 10) / 10,
           total_votes: r?.total_votes || 0
         };
-      });
+      }));
 
-      const testimonials = queryAll(db, `
+      const testimonials = await queryAll(db, `
         SELECT recommendation_text as text, recommendation_nps as nps, created_at as date
         FROM surveys
         WHERE recommendation_text IS NOT NULL AND TRIM(recommendation_text) != ''
         ORDER BY id DESC LIMIT 10
       `);
 
-      const suggestions = queryAll(db, `
+      const suggestions = await queryAll(db, `
         SELECT general_suggestions as text, created_at as date
         FROM surveys
         WHERE general_suggestions IS NOT NULL AND TRIM(general_suggestions) != ''
@@ -300,11 +518,11 @@ async function startServer() {
   });
 
   // POST Anonymous Survey Submission
-  app.post('/api/surveys', (req, res) => {
+  app.post('/api/surveys', async (req, res) => {
     try {
       const s = req.body;
 
-      db.run(`
+      await run(db, `
         INSERT INTO surveys (
           pre_study_rating, pre_study_comment,
           marketing_rating, marketing_comment,
@@ -327,7 +545,6 @@ async function startServer() {
         s.recommendation_text || '', s.recommendation_nps || 10, s.general_suggestions || ''
       ]);
 
-      saveDb();
       res.json({ success: true, message: 'Pesquisa enviada com sucesso!' });
     } catch (err: any) {
       console.error('Erro ao salvar pesquisa:', err);
@@ -335,16 +552,11 @@ async function startServer() {
     }
   });
 
-  // POST Seed Reset
-  app.post('/api/seed', (req, res) => {
+  // POST Reset event data (workshops, participants, attendance, surveys) — keeps cities & users
+  app.post('/api/seed', requireAuth, requireAdmin, async (req, res) => {
     try {
-      db.run('DELETE FROM attendance');
-      db.run('DELETE FROM participants');
-      db.run('DELETE FROM workshops');
-      db.run('DELETE FROM surveys');
-      seedInitialData(db);
-      saveDb();
-      res.json({ success: true, message: 'Dados resetados e semeados!' });
+      await seedInitialData(db);
+      res.json({ success: true, message: 'Dados do evento resetados!' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -1,58 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { RatingInput } from './RatingInput';
+import { EpaLoading } from './EpaLoading';
 import { Workshop, SurveyResponse } from '../types';
-import { ShieldCheck, Send, BookOpen, Megaphone, HeartHandshake, Building, Users, Sparkles, Church, Leaf, ThumbsUp, MessageSquare, AlertCircle } from 'lucide-react';
+import logoEpa from '../images/logo-epa.png';
+import {
+  ShieldCheck, Send, BookOpen, HeartHandshake, Building, Users, Sparkles, Church,
+  ThumbsUp, MessageSquare, AlertCircle, FileCheck2, ArrowRight, ArrowLeft,
+  Lock, PartyPopper
+} from 'lucide-react';
 
 interface SurveyFormPageProps {
   onSuccess: () => void;
 }
 
+type SectionId = 'prep' | 'reception' | 'infra' | 'workshops' | 'moments' | 'liturgy' | 'recommend' | 'suggestions' | 'consent';
+
+const SECTION_META: Record<SectionId, { icon: React.ReactNode; iconBg: string; title: string }> = {
+  prep: { icon: <BookOpen className="w-5 h-5" />, iconBg: 'bg-blue-100 text-blue-800', title: 'Preparação & Divulgação' },
+  reception: { icon: <HeartHandshake className="w-5 h-5" />, iconBg: 'bg-indigo-100 text-indigo-800', title: 'Recepção & Credenciamento' },
+  infra: { icon: <Building className="w-5 h-5" />, iconBg: 'bg-sky-100 text-sky-800', title: 'Infraestrutura & Alimentação' },
+  workshops: { icon: <Users className="w-5 h-5" />, iconBg: 'bg-purple-100 text-purple-800', title: 'Avaliação das Oficinas' },
+  moments: { icon: <Sparkles className="w-5 h-5" />, iconBg: 'bg-amber-100 text-amber-800', title: 'Momentos Especiais & Animação' },
+  liturgy: { icon: <Church className="w-5 h-5" />, iconBg: 'bg-indigo-100 text-indigo-800', title: 'Liturgia & Ecologia' },
+  recommend: { icon: <ThumbsUp className="w-5 h-5" />, iconBg: 'bg-blue-100 text-blue-800', title: 'Recomendação & NPS' },
+  suggestions: { icon: <MessageSquare className="w-5 h-5" />, iconBg: 'bg-slate-100 text-slate-800', title: 'Sugestões Gerais' },
+  consent: { icon: <FileCheck2 className="w-5 h-5" />, iconBg: 'bg-slate-100 text-slate-800', title: 'Termo de Privacidade' },
+};
+
 export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => {
+  const [showSplash, setShowSplash] = useState(true);
+  const [started, setStarted] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 1400);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Form State
-  const [preStudyRating, setPreStudyRating] = useState<number>(5);
+  const [preStudyRating, setPreStudyRating] = useState<number>(0);
   const [preStudyComment, setPreStudyComment] = useState<string>('');
-  
-  const [marketingRating, setMarketingRating] = useState<number>(5);
+
+  const [marketingRating, setMarketingRating] = useState<number>(0);
   const [marketingComment, setMarketingComment] = useState<string>('');
 
-  const [welcomeRating, setWelcomeRating] = useState<number>(5);
-  const [checkinRating, setCheckinRating] = useState<number>(5);
+  const [welcomeRating, setWelcomeRating] = useState<number>(0);
+  const [checkinRating, setCheckinRating] = useState<number>(0);
 
   // Infra
-  const [infraAccommodation, setInfraAccommodation] = useState<number>(5);
-  const [infraBreakfast, setInfraBreakfast] = useState<number>(5);
-  const [infraLunch, setInfraLunch] = useState<number>(5);
-  const [infraDinner, setInfraDinner] = useState<number>(5);
-  const [infraRestrooms, setInfraRestrooms] = useState<number>(5);
-  const [infraTech, setInfraTech] = useState<number>(5);
-  
+  const [infraAccommodation, setInfraAccommodation] = useState<number>(0);
+  const [infraBreakfast, setInfraBreakfast] = useState<number>(0);
+  const [infraLunch, setInfraLunch] = useState<number>(0);
+  const [infraDinner, setInfraDinner] = useState<number>(0);
+  const [infraRestrooms, setInfraRestrooms] = useState<number>(0);
+  const [infraTech, setInfraTech] = useState<number>(0);
+
   const [infraLodgingUsed, setInfraLodgingUsed] = useState<boolean>(true);
-  const [infraLodgingRating, setInfraLodgingRating] = useState<number>(5);
+  const [infraLodgingRating, setInfraLodgingRating] = useState<number>(0);
 
   // Workshops
   const [workshop1Id, setWorkshop1Id] = useState<number | ''>('');
-  const [workshop1Rating, setWorkshop1Rating] = useState<number>(5);
-  
+  const [workshop1Rating, setWorkshop1Rating] = useState<number>(0);
+
   const [workshop2Id, setWorkshop2Id] = useState<number | ''>('');
-  const [workshop2Rating, setWorkshop2Rating] = useState<number>(5);
+  const [workshop2Rating, setWorkshop2Rating] = useState<number>(0);
 
   // Moments
-  const [youthMomentRating, setYouthMomentRating] = useState<number>(5);
-  const [mirimMomentRating, setMirimMomentRating] = useState<number>(5);
-  const [animationRating, setAnimationRating] = useState<number>(5);
-  const [massRating, setMassRating] = useState<number>(5);
-  const [liturgyRating, setLiturgyRating] = useState<number>(5);
-  const [ecoFriendlyRating, setEcoFriendlyRating] = useState<number>(5);
+  const [youthMomentRating, setYouthMomentRating] = useState<number>(0);
+  const [mirimMomentRating, setMirimMomentRating] = useState<number>(0);
+  const [animationRating, setAnimationRating] = useState<number>(0);
+  const [massRating, setMassRating] = useState<number>(0);
+  const [liturgyRating, setLiturgyRating] = useState<number>(0);
+  const [ecoFriendlyRating, setEcoFriendlyRating] = useState<number>(0);
 
   // Recommendation & Comments
   const [recommendationText, setRecommendationText] = useState<string>('');
   const [recommendationNps, setRecommendationNps] = useState<number>(10);
   const [generalSuggestions, setGeneralSuggestions] = useState<string>('');
+
+  const [consentAccepted, setConsentAccepted] = useState<boolean>(false);
 
   useEffect(() => {
     fetch('/api/workshops')
@@ -71,10 +103,329 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       .catch(err => console.error('Erro ao buscar oficinas:', err));
   }, []);
 
+  const w1Options = workshops.filter(w => w.time_slot === '1ª Oficina' || w.time_slot === 'Geral');
+  const w2Options = workshops.filter(w => w.time_slot === '2ª Oficina' || w.time_slot === 'Geral');
+
+  // -----------------------------------------------------------------------
+  // One question (or small self-contained group) per screen.
+  // -----------------------------------------------------------------------
+  type Question = { section: SectionId; render: () => React.ReactNode };
+
+  const questions: Question[] = [
+    {
+      section: 'prep',
+      render: () => (
+        <RatingInput
+          label="Estudo Pré EPA"
+          sublabel="Qualidade do material preparatório enviado para as paróquias/cidades."
+          value={preStudyRating}
+          onChange={setPreStudyRating}
+          comment={preStudyComment}
+          onCommentChange={setPreStudyComment}
+          commentPlaceholder="Comentário sobre o Estudo Pré EPA (opcional)"
+        />
+      ),
+    },
+    {
+      section: 'prep',
+      render: () => (
+        <RatingInput
+          label="Divulgação do 5º EPA na sua cidade"
+          sublabel="Como foi a informação e engajamento na sua região."
+          value={marketingRating}
+          onChange={setMarketingRating}
+          comment={marketingComment}
+          onCommentChange={setMarketingComment}
+          commentPlaceholder="Comentário sobre a divulgação (opcional)"
+        />
+      ),
+    },
+    {
+      section: 'reception',
+      render: () => (
+        <RatingInput
+          label="Acolhida"
+          sublabel="Atendimento, carinho e recepção da equipe."
+          value={welcomeRating}
+          onChange={setWelcomeRating}
+        />
+      ),
+    },
+    {
+      section: 'reception',
+      render: () => (
+        <RatingInput
+          label="Credenciamento"
+          sublabel="Agilidade e organização na entrega de crachás/materiais."
+          value={checkinRating}
+          onChange={setCheckinRating}
+        />
+      ),
+    },
+    { section: 'infra', render: () => <RatingInput label="Acomodação geral" value={infraAccommodation} onChange={setInfraAccommodation} /> },
+    { section: 'infra', render: () => <RatingInput label="Café da Manhã" value={infraBreakfast} onChange={setInfraBreakfast} /> },
+    { section: 'infra', render: () => <RatingInput label="Almoço" value={infraLunch} onChange={setInfraLunch} /> },
+    { section: 'infra', render: () => <RatingInput label="Jantar" value={infraDinner} onChange={setInfraDinner} /> },
+    {
+      section: 'infra',
+      render: () => (
+        <RatingInput
+          label="Banheiros"
+          sublabel="Limpeza e disponibilidade das instalações sanitárias."
+          value={infraRestrooms}
+          onChange={setInfraRestrooms}
+        />
+      ),
+    },
+    {
+      section: 'infra',
+      render: () => (
+        <RatingInput
+          label="Recursos Tecnológicos"
+          sublabel="Som, projeção, iluminação e microfones."
+          value={infraTech}
+          onChange={setInfraTech}
+        />
+      ),
+    },
+    {
+      section: 'infra',
+      render: () => (
+        <div className="space-y-4">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label className="text-sm font-bold text-slate-800">
+              Você utilizou a Hospedagem do evento?
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setInfraLodgingUsed(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  infraLodgingUsed ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600'
+                }`}
+              >
+                Sim, utilizei
+              </button>
+              <button
+                type="button"
+                onClick={() => setInfraLodgingUsed(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  !infraLodgingUsed ? 'bg-slate-800 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600'
+                }`}
+              >
+                Não me hospedei
+              </button>
+            </div>
+          </div>
+
+          {infraLodgingUsed && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+              <RatingInput
+                label="Avaliação da Hospedagem"
+                sublabel="Conforto, recepção e estrutura do local de hospedagem."
+                value={infraLodgingRating}
+                onChange={setInfraLodgingRating}
+              />
+            </motion.div>
+          )}
+        </div>
+      ),
+    },
+    {
+      section: 'workshops',
+      render: () => (
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
+            1ª Oficina Participada
+          </label>
+          <select
+            value={workshop1Id}
+            onChange={(e) => setWorkshop1Id(e.target.value ? Number(e.target.value) : '')}
+            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="">Selecione a 1ª Oficina...</option>
+            {(w1Options.length > 0 ? w1Options : workshops).map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.title} ({w.instructor})
+              </option>
+            ))}
+          </select>
+
+          <RatingInput label="Nota para a 1ª Oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
+        </div>
+      ),
+    },
+    {
+      section: 'workshops',
+      render: () => (
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
+            2ª Oficina Participada
+          </label>
+          <select
+            value={workshop2Id}
+            onChange={(e) => setWorkshop2Id(e.target.value ? Number(e.target.value) : '')}
+            className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="">Selecione a 2ª Oficina...</option>
+            {(w2Options.length > 0 ? w2Options : workshops).map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.title} ({w.instructor})
+              </option>
+            ))}
+          </select>
+
+          <RatingInput label="Nota para a 2ª Oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
+        </div>
+      ),
+    },
+    { section: 'moments', render: () => <RatingInput label="Momento Jovem" value={youthMomentRating} onChange={setYouthMomentRating} /> },
+    { section: 'moments', render: () => <RatingInput label="Momento MFC Mirim" value={mirimMomentRating} onChange={setMirimMomentRating} /> },
+    { section: 'moments', render: () => <RatingInput label="Animação & Músicas" value={animationRating} onChange={setAnimationRating} /> },
+    { section: 'liturgy', render: () => <RatingInput label="Missa do EPA" sublabel="Celebração Eucarística." value={massRating} onChange={setMassRating} /> },
+    {
+      section: 'liturgy',
+      render: () => (
+        <RatingInput
+          label="Liturgias & Orações"
+          sublabel="Orações preparadas pelas comitivas das cidades."
+          value={liturgyRating}
+          onChange={setLiturgyRating}
+        />
+      ),
+    },
+    {
+      section: 'liturgy',
+      render: () => (
+        <RatingInput
+          label="Respeito aos Recursos Naturais"
+          sublabel="Uso consciente de descartáveis e cuidado ambiental."
+          value={ecoFriendlyRating}
+          onChange={setEcoFriendlyRating}
+        />
+      ),
+    },
+    {
+      section: 'recommend',
+      render: () => (
+        <div>
+          <label className="text-sm font-bold text-slate-800 block mb-1">
+            De 0 a 10, o quanto você recomendaria o EPA para um amigo ou família do MFC?
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5 pt-2">
+            {Array.from({ length: 11 }, (_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setRecommendationNps(i)}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl font-extrabold text-sm transition-all ${
+                  recommendationNps === i
+                    ? 'bg-blue-600 text-white scale-110 shadow-md shadow-blue-500/20'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    {
+      section: 'recommend',
+      render: () => (
+        <div>
+          <label className="text-sm font-semibold text-slate-800 block mb-1">
+            Como você recomendaria o EPA para quem não pôde vir nesta edição? (Depoimento)
+          </label>
+          <textarea
+            rows={4}
+            placeholder="Escreva aqui uma mensagem inspiradora ou conselho para os membros da sua paróquia/cidade..."
+            value={recommendationText}
+            onChange={(e) => setRecommendationText(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      ),
+    },
+    {
+      section: 'suggestions',
+      render: () => (
+        <textarea
+          rows={5}
+          placeholder="Deixe aqui suas sugestões de melhoria para os próximos encontros do MFC..."
+          value={generalSuggestions}
+          onChange={(e) => setGeneralSuggestions(e.target.value)}
+          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      ),
+    },
+    {
+      section: 'consent',
+      render: () => (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Esta pesquisa é <strong>100% anônima</strong>: não coletamos nome, cidade individual, e-mail ou qualquer
+            dado que possa identificar o respondente. As respostas serão utilizadas exclusivamente pela Comissão
+            Organizadora do 5º EPA Pirassununga e pelo Movimento Familiar Cristão (MFC) para fins estatísticos e de
+            melhoria contínua dos próximos encontros, em conformidade com a Lei Geral de Proteção de Dados (LGPD -
+            Lei nº 13.709/2018).
+          </p>
+
+          <label className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors">
+            <input
+              type="checkbox"
+              checked={consentAccepted}
+              onChange={(e) => setConsentAccepted(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-blue-600 flex-shrink-0"
+            />
+            <span className="text-sm font-semibold text-slate-800">
+              Li e estou de acordo com o Termo de Responsabilidade e Privacidade acima, e desejo enviar minhas
+              respostas de forma anônima.
+            </span>
+          </label>
+
+          {!consentAccepted && (
+            <p className="text-xs text-slate-500 text-center">
+              Aceite o termo de responsabilidade acima para habilitar o envio.
+            </p>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const totalSteps = questions.length;
+  const currentQuestion = questions[stepIndex];
+  const currentMeta = SECTION_META[currentQuestion.section];
+  const isLastStep = stepIndex === totalSteps - 1;
+  const progressPct = Math.round(((stepIndex + 1) / totalSteps) * 100);
+  const isNewSection = stepIndex === 0 || questions[stepIndex - 1].section !== currentQuestion.section;
+
+  const goNext = () => {
+    if (isLastStep) return;
+    setDirection(1);
+    setStepIndex(i => Math.min(i + 1, totalSteps - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goBack = () => {
+    if (stepIndex === 0) return;
+    setDirection(-1);
+    setStepIndex(i => Math.max(i - 1, 0));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrorMsg(null);
+
+    if (!consentAccepted) {
+      setErrorMsg('É necessário aceitar o Termo de Responsabilidade e Privacidade para enviar a pesquisa.');
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const payload: SurveyResponse = {
       pre_study_rating: preStudyRating,
@@ -129,418 +480,221 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     }
   };
 
-  const w1Options = workshops.filter(w => w.time_slot === '1ª Oficina' || w.time_slot === 'Geral');
-  const w2Options = workshops.filter(w => w.time_slot === '2ª Oficina' || w.time_slot === 'Geral');
+  // ---------------------------------------------------------------------
+  // SPLASH — logo alone, animated entrance, before anything else shows
+  // ---------------------------------------------------------------------
+  if (showSplash) {
+    return (
+      <div className="min-h-screen w-full bg-white flex items-center justify-center px-4 overflow-hidden">
+        <motion.img
+          src={logoEpa}
+          alt="Logo 5º EPA Pirassununga"
+          className="w-48 h-48 sm:w-64 sm:h-64 object-contain drop-shadow-xl"
+          initial={{ scale: 0.3, opacity: 0, rotate: -15 }}
+          animate={{ scale: [0.3, 1.08, 1], opacity: 1, rotate: 0 }}
+          exit={{ scale: 1.15, opacity: 0 }}
+          transition={{ duration: 0.9, ease: 'easeOut', times: [0, 0.7, 1] }}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // INTRO SCREEN — plain white, no dark chrome, fully responsive
+  // ---------------------------------------------------------------------
+  if (!started) {
+    return (
+      <div className="min-h-screen w-full bg-white flex items-center justify-center px-4 py-8 sm:py-10">
+        <div className="w-full max-w-md sm:max-w-lg text-center space-y-6">
+
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: 'backOut' }}
+            className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-3xl bg-white shadow-md border border-slate-100 p-2.5 flex items-center justify-center"
+          >
+            <img src={logoEpa} alt="Logo 5º EPA Pirassununga" className="w-full h-full object-contain" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold"
+          >
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>Pesquisa 100% Anônima • Sem identificação</span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight"
+          >
+            Pesquisa de Satisfação
+            <span className="block text-blue-600">5º EPA Pirassununga</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="text-slate-600 text-sm sm:text-base leading-relaxed"
+          >
+            Não pedimos seu nome, cidade ou qualquer dado pessoal. Suas respostas são
+            <strong className="text-slate-800"> totalmente anônimas</strong> e ajudam a coordenação do MFC a preparar
+            encontros ainda melhores. Uma pergunta por vez, no seu ritmo!
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className="grid grid-cols-3 gap-2 sm:gap-3 text-[11px] sm:text-xs font-semibold text-slate-600"
+          >
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <Lock className="w-4 h-4 text-blue-600" />
+              <span>Sem dados pessoais</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <FileCheck2 className="w-4 h-4 text-blue-600" />
+              <span>{totalSteps} perguntas rápidas</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <PartyPopper className="w-4 h-4 text-blue-600" />
+              <span>Avalie de 1 a 5</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <button
+              onClick={() => setStarted(true)}
+              className="w-full sm:w-auto px-10 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-md transition-colors inline-flex items-center justify-center gap-2"
+            >
+              <span>Começar Pesquisa</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // STEP CONTENT — one question per screen, plain white background
+  // ---------------------------------------------------------------------
+  const variants = {
+    enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 30 : -30 }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -30 : 30 }),
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-16">
-      
-      {/* Form Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Pesquisa 100% Anônima • 5º EPA Pirassununga</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-          Formulário de Avaliação e Satisfação
-        </h1>
-        <p className="text-slate-600 text-sm max-w-xl mx-auto">
-          Sua opinião sincera ajudará a coordenação do MFC a aprimorar nossos próximos encontros. Nenhuma informação pessoal é gravada.
-        </p>
-      </div>
+    <div className="min-h-screen w-full bg-white">
+      <div className="max-w-xl mx-auto px-4 py-5 pb-10">
 
-      {errorMsg && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-
-        {/* SECTION 1: Preparação Pré-EPA */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">1. Preparação & Divulgação</h2>
-              <p className="text-xs text-slate-500">Estudo prévio e divulgação do 5º EPA na sua cidade</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <RatingInput
-                label="Estudo Pré EPA"
-                sublabel="Qualidade do material preparatório enviado para as paróquias/cidades."
-                value={preStudyRating}
-                onChange={setPreStudyRating}
-              />
-              <input
-                type="text"
-                placeholder="Comentário sobre o Estudo Pré EPA (opcional)"
-                value={preStudyComment}
-                onChange={(e) => setPreStudyComment(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-3">
-              <RatingInput
-                label="Divulgação do 5º EPA na sua cidade"
-                sublabel="Como foi a informação e engajamento na sua região."
-                value={marketingRating}
-                onChange={setMarketingRating}
-              />
-              <input
-                type="text"
-                placeholder="Comentário sobre a divulgação (opcional)"
-                value={marketingComment}
-                onChange={(e) => setMarketingComment(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 2: Recepção em Pirassununga */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold">
-              <HeartHandshake className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">2. Recepção & Credenciamento</h2>
-              <p className="text-xs text-slate-500">Acolhida inicial na chegada a Pirassununga</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <RatingInput
-              label="Acolhida"
-              sublabel="Atendimento, carinho e recepção da equipe."
-              value={welcomeRating}
-              onChange={setWelcomeRating}
-            />
-            <RatingInput
-              label="Credenciamento"
-              sublabel="Agilidade e organização na entrega de crachás/materiais."
-              value={checkinRating}
-              onChange={setCheckinRating}
-            />
-          </div>
-        </div>
-
-        {/* SECTION 3: Infraestrutura */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold">
-              <Building className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">3. Infraestrutura & Alimentação</h2>
-              <p className="text-xs text-slate-500">Acomodações, refeições, recursos e instalações</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <RatingInput
-              label="Acomodação geral"
-              value={infraAccommodation}
-              onChange={setInfraAccommodation}
-            />
-            <RatingInput
-              label="Café da Manhã"
-              value={infraBreakfast}
-              onChange={setInfraBreakfast}
-            />
-            <RatingInput
-              label="Almoço"
-              value={infraLunch}
-              onChange={setInfraLunch}
-            />
-            <RatingInput
-              label="Jantar"
-              value={infraDinner}
-              onChange={setInfraDinner}
-            />
-            <RatingInput
-              label="Banheiros"
-              sublabel="Limpeza e disponibilidade das instalações sanitárias."
-              value={infraRestrooms}
-              onChange={setInfraRestrooms}
-            />
-            <RatingInput
-              label="Recursos Tecnológicos"
-              sublabel="Som, projeção, Iluminação e microfones."
-              value={infraTech}
-              onChange={setInfraTech}
-            />
-          </div>
-
-          {/* Hospedagem Variant */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-slate-800">
-                Você utilizou a Hospedagem do evento?
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setInfraLodgingUsed(true)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    infraLodgingUsed
-                      ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                      : 'bg-white border text-slate-600'
-                  }`}
-                >
-                  Sim, utilizei
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInfraLodgingUsed(false)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    !infraLodgingUsed
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'bg-white border text-slate-600'
-                  }`}
-                >
-                  Não me hospedei
-                </button>
+        {/* Progress header */}
+        <div className="sticky top-0 z-30 -mx-4 px-4 pt-1 pb-2 bg-white/95 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-white shadow-sm border border-slate-100 p-1 flex items-center justify-center flex-shrink-0">
+                <img src={logoEpa} alt="Logo EPA" className="w-full h-full object-contain" />
               </div>
+              <span className="text-xs font-bold text-slate-500">
+                {stepIndex + 1}/{totalSteps}
+              </span>
             </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Anônima</span>
+            </div>
+          </div>
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-blue-500"
+              initial={false}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            />
+          </div>
+        </div>
 
-            {infraLodgingUsed && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                <RatingInput
-                  label="Avaliação da Hospedagem"
-                  sublabel="Conforto, recepção e estrutura do local de hospedagem."
-                  value={infraLodgingRating}
-                  onChange={setInfraLodgingRating}
-                />
-              </motion.div>
+        {errorMsg && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-4">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={stepIndex}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+            >
+              {isNewSection && (
+                <div className="flex items-center gap-3 pb-4">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${currentMeta.iconBg}`}>
+                    {currentMeta.icon}
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">{currentMeta.title}</h2>
+                </div>
+              )}
+
+              {currentQuestion.render()}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-3 pt-6">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={stepIndex === 0}
+              className="px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors disabled:opacity-0 disabled:pointer-events-none flex items-center gap-2 flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Voltar</span>
+            </button>
+
+            {!isLastStep ? (
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex-1 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <span>Próxima</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting || !consentAccepted}
+                className="flex-1 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <EpaLoading label="Enviando..." size="sm" />
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    <span>Finalizar e Enviar</span>
+                  </>
+                )}
+              </button>
             )}
           </div>
-        </div>
-
-        {/* SECTION 4: Oficinas Formativas */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">4. Avaliação das Oficinas</h2>
-              <p className="text-xs text-slate-500">Selecione qual oficina você participou em cada horário</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* 1ª Oficina */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-              <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-                1ª Oficina Participada
-              </label>
-              <select
-                value={workshop1Id}
-                onChange={(e) => setWorkshop1Id(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecione a 1ª Oficina...</option>
-                {(w1Options.length > 0 ? w1Options : workshops).map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.title} ({w.instructor})
-                  </option>
-                ))}
-              </select>
-
-              <RatingInput
-                label="Nota para a 1ª Oficina"
-                value={workshop1Rating}
-                onChange={setWorkshop1Rating}
-              />
-            </div>
-
-            {/* 2ª Oficina */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-              <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
-                2ª Oficina Participada
-              </label>
-              <select
-                value={workshop2Id}
-                onChange={(e) => setWorkshop2Id(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecione a 2ª Oficina...</option>
-                {(w2Options.length > 0 ? w2Options : workshops).map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.title} ({w.instructor})
-                  </option>
-                ))}
-              </select>
-
-              <RatingInput
-                label="Nota para a 2ª Oficina"
-                value={workshop2Rating}
-                onChange={setWorkshop2Rating}
-              />
-            </div>
-
-          </div>
-        </div>
-
-        {/* SECTION 5: Momentos Especiais & Espiritualidade */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">5. Momentos Especiais & Animação</h2>
-              <p className="text-xs text-slate-500">Atividades direcionadas, louvor e animação do evento</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <RatingInput
-              label="Momento Jovem"
-              value={youthMomentRating}
-              onChange={setYouthMomentRating}
-            />
-            <RatingInput
-              label="Momento MFC Mirim"
-              value={mirimMomentRating}
-              onChange={setMirimMomentRating}
-            />
-            <RatingInput
-              label="Animação & Músicas"
-              value={animationRating}
-              onChange={setAnimationRating}
-            />
-          </div>
-        </div>
-
-        {/* SECTION 6: Celebrações & Sustentabilidade */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
-              <Church className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">6. Liturgia & Conscientização Ecológica</h2>
-              <p className="text-xs text-slate-500">Missas, orações das cidades e respeito aos recursos naturais</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <RatingInput
-              label="Missa do EPA"
-              sublabel="Celebração Eucarística."
-              value={massRating}
-              onChange={setMassRating}
-            />
-            <RatingInput
-              label="Liturgias & Orações"
-              sublabel="Orações preparadas pelas comitivas das cidades."
-              value={liturgyRating}
-              onChange={setLiturgyRating}
-            />
-            <RatingInput
-              label="Respeito aos Recursos Naturais"
-              sublabel="Uso consciente de descartáveis e cuidado ambiental."
-              value={ecoFriendlyRating}
-              onChange={setEcoFriendlyRating}
-            />
-          </div>
-        </div>
-
-        {/* SECTION 7: Recomendação & Depoimento */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              <ThumbsUp className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">7. Recomendação & NPS</h2>
-              <p className="text-xs text-slate-500">Como você recomendaria o EPA para quem não pôde participar?</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-bold text-slate-800 block mb-1">
-                De 0 a 10, o quanto você recomendaria o EPA para um amigo ou família do MFC?
-              </label>
-              <div className="flex flex-wrap items-center gap-1.5 pt-2">
-                {Array.from({ length: 11 }, (_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setRecommendationNps(i)}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
-                      recommendationNps === i
-                        ? 'bg-emerald-500 text-slate-950 scale-110 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {i}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <label className="text-sm font-semibold text-slate-800 block mb-1">
-                Como você recomendaria o EPA para quem não pôde vir nesta edição? (Depoimento)
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Escreva aqui uma mensagem inspiradora ou conselho para os membros da sua paróquia/cidade..."
-                value={recommendationText}
-                onChange={(e) => setRecommendationText(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 8: Sugestões Gerais */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center font-bold">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">8. Sugestões & Comentários Gerais</h2>
-              <p className="text-xs text-slate-500">Espaço livre para elogios, críticas construtivas e ideias para o 6º EPA</p>
-            </div>
-          </div>
-
-          <textarea
-            rows={3}
-            placeholder="Deixe aqui suas sugestões de melhoria para os próximos encontros do MFC..."
-            value={generalSuggestions}
-            onChange={(e) => setGeneralSuggestions(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-
-        {/* Submit Button */}
-        <div className="text-center pt-4">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-base shadow-xl shadow-emerald-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 inline-flex items-center justify-center gap-3"
-          >
-            <Send className="w-5 h-5" />
-            <span>{isSubmitting ? 'Enviando Respostas...' : 'Finalizar e Enviar Avaliação do EPA'}</span>
-          </button>
-        </div>
-
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

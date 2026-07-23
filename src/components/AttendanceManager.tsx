@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Participant, Workshop } from '../types';
-import { Search, Plus, CheckCircle, XCircle, Users, BookOpen, MapPin, Trash2, UserPlus, RefreshCw, Filter } from 'lucide-react';
+import { Participant, Workshop, City } from '../types';
+import { authFetch } from '../lib/authFetch';
+import { Search, Plus, CheckCircle, XCircle, Users, BookOpen, MapPin, Trash2, UserPlus, RefreshCw, Filter, MapPinPlus } from 'lucide-react';
 
 export const AttendanceManager: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCityFilter, setSelectedCityFilter] = useState<string>('TODAS');
@@ -12,10 +14,11 @@ export const AttendanceManager: React.FC = () => {
   // Modal states
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [showAddWorkshop, setShowAddWorkshop] = useState(false);
+  const [showManageCities, setShowManageCities] = useState(false);
 
   // New Participant Form State
   const [newName, setNewName] = useState('');
-  const [newCity, setNewCity] = useState('');
+  const [newCityId, setNewCityId] = useState<number | ''>('');
   const [newFamilyGroup, setNewFamilyGroup] = useState('');
   const [newW1Id, setNewW1Id] = useState<number | ''>('');
   const [newW2Id, setNewW2Id] = useState<number | ''>('');
@@ -26,16 +29,21 @@ export const AttendanceManager: React.FC = () => {
   const [wsLocation, setWsLocation] = useState('');
   const [wsSlot, setWsSlot] = useState<'1ª Oficina' | '2ª Oficina'>('1ª Oficina');
 
+  // New City Form State
+  const [newCityName, setNewCityName] = useState('');
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [partRes, wsRes] = await Promise.all([
-        fetch('/api/participants').then(r => r.json()),
-        fetch('/api/workshops').then(r => r.json())
+      const [partRes, wsRes, cityRes] = await Promise.all([
+        authFetch('/api/participants').then(r => r.json()),
+        authFetch('/api/workshops').then(r => r.json()),
+        authFetch('/api/cities').then(r => r.json())
       ]);
 
       if (Array.isArray(partRes)) setParticipants(partRes);
       if (Array.isArray(wsRes)) setWorkshops(wsRes);
+      if (Array.isArray(cityRes)) setCities(cityRes);
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
     } finally {
@@ -49,7 +57,7 @@ export const AttendanceManager: React.FC = () => {
 
   const handleMarkAttendance = async (participantId: number, workshopId: number, status: 'PRESENTE' | 'FALTA') => {
     try {
-      const res = await fetch('/api/attendance', {
+      const res = await authFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ participant_id: participantId, workshop_id: workshopId, status })
@@ -74,15 +82,15 @@ export const AttendanceManager: React.FC = () => {
 
   const handleAddParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName || !newCity) return;
+    if (!newName || !newCityId) return;
 
     try {
-      const res = await fetch('/api/participants', {
+      const res = await authFetch('/api/participants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newName,
-          city: newCity,
+          city_id: Number(newCityId),
           family_group: newFamilyGroup || 'Família MFC',
           workshop1_id: newW1Id !== '' ? Number(newW1Id) : null,
           workshop2_id: newW2Id !== '' ? Number(newW2Id) : null
@@ -91,7 +99,7 @@ export const AttendanceManager: React.FC = () => {
 
       if (res.ok) {
         setNewName('');
-        setNewCity('');
+        setNewCityId('');
         setNewFamilyGroup('');
         setNewW1Id('');
         setNewW2Id('');
@@ -108,7 +116,7 @@ export const AttendanceManager: React.FC = () => {
     if (!wsTitle || !wsInstructor || !wsLocation) return;
 
     try {
-      const res = await fetch('/api/workshops', {
+      const res = await authFetch('/api/workshops', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,10 +140,40 @@ export const AttendanceManager: React.FC = () => {
     }
   };
 
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCityName.trim()) return;
+
+    try {
+      const res = await authFetch('/api/cities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCityName.trim() })
+      });
+
+      if (res.ok) {
+        setNewCityName('');
+        loadData();
+      }
+    } catch (err) {
+      console.error('Erro ao cadastrar cidade:', err);
+    }
+  };
+
+  const handleDeleteCity = async (id: number) => {
+    if (!confirm('Remover esta cidade? Participantes já cadastrados com ela não serão afetados.')) return;
+    try {
+      const res = await authFetch(`/api/cities/${id}`, { method: 'DELETE' });
+      if (res.ok) loadData();
+    } catch (err) {
+      console.error('Erro ao remover cidade:', err);
+    }
+  };
+
   const handleDeleteParticipant = async (id: number) => {
     if (!confirm('Deseja realmente remover este participante?')) return;
     try {
-      const res = await fetch(`/api/participants/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/participants/${id}`, { method: 'DELETE' });
       if (res.ok) {
         loadData();
       }
@@ -144,8 +182,8 @@ export const AttendanceManager: React.FC = () => {
     }
   };
 
-  // Cities list
-  const cities = Array.from(new Set(participants.map(p => p.city))).filter(Boolean);
+  // Cities list (for the filter bar, derived from actually-enrolled participants)
+  const enrolledCities = Array.from(new Set(participants.map(p => p.city))).filter(Boolean);
 
   // Filtered participants
   const filtered = participants.filter(p => {
@@ -167,23 +205,23 @@ export const AttendanceManager: React.FC = () => {
   });
 
   return (
-    <div className="space-y-8 pb-16">
-      
+    <div className="space-y-5 sm:space-y-8 pb-16">
+
       {/* Header & Stats Cards */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Controle de Membros e Presença em Oficinas
+          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Membros & Presença
           </h1>
-          <p className="text-slate-600 text-xs sm:text-sm">
+          <p className="hidden sm:block text-slate-600 text-xs sm:text-sm">
             Gestão dos participantes inscritos no 5º EPA e marcação de presença pelos oficineiros.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 md:flex items-center gap-2">
           <button
             onClick={() => setShowAddParticipant(true)}
-            className="px-4 py-2.5 bg-emerald-500 text-slate-950 font-bold text-xs sm:text-sm rounded-xl shadow-md hover:bg-emerald-400 transition-all flex items-center gap-2"
+            className="px-3 sm:px-4 py-2.5 bg-blue-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
           >
             <UserPlus className="w-4 h-4" />
             <span>Novo Participante</span>
@@ -191,60 +229,68 @@ export const AttendanceManager: React.FC = () => {
 
           <button
             onClick={() => setShowAddWorkshop(true)}
-            className="px-4 py-2.5 bg-slate-900 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:bg-slate-800 transition-all flex items-center gap-2"
+            className="px-3 sm:px-4 py-2.5 bg-slate-900 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Oficina</span>
+          </button>
+
+          <button
+            onClick={() => setShowManageCities(true)}
+            className="col-span-2 md:col-span-1 px-3 sm:px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+          >
+            <MapPinPlus className="w-4 h-4" />
+            <span>Gerenciar Cidades</span>
           </button>
         </div>
       </div>
 
       {/* Overview Metric Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-3 sm:p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold flex-shrink-0">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Total de Membros</p>
-            <p className="text-xl font-black text-slate-900">{participants.length}</p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Oficinas Ativas</p>
-            <p className="text-xl font-black text-slate-900">{workshops.length}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Total de Membros</p>
+            <p className="text-lg sm:text-xl font-black text-slate-900">{participants.length}</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
-            <CheckCircle className="w-5 h-5" />
+        <div className="p-3 sm:p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold flex-shrink-0">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Presenças Marcadas</p>
-            <p className="text-xl font-black text-emerald-600">{totalPresenceMarks}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Oficinas Ativas</p>
+            <p className="text-lg sm:text-xl font-black text-slate-900">{workshops.length}</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-            <XCircle className="w-5 h-5" />
+        <div className="p-3 sm:p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold flex-shrink-0">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Faltas Registradas</p>
-            <p className="text-xl font-black text-rose-600">{totalAbsenceMarks}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Presenças</p>
+            <p className="text-lg sm:text-xl font-black text-blue-600">{totalPresenceMarks}</p>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold flex-shrink-0">
+            <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Faltas</p>
+            <p className="text-lg sm:text-xl font-black text-rose-600">{totalAbsenceMarks}</p>
           </div>
         </div>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+
         {/* Search Input */}
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -253,21 +299,20 @@ export const AttendanceManager: React.FC = () => {
             placeholder="Buscar por nome, cidade ou família..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-9 pr-4 py-2.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* City Filter */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <span className="text-xs font-semibold text-slate-600">Cidade:</span>
+          <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <select
             value={selectedCityFilter}
             onChange={(e) => setSelectedCityFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="flex-1 sm:flex-none px-3 py-2.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="TODAS">Todas as Cidades ({cities.length})</option>
-            {cities.map(c => (
+            <option value="TODAS">Todas as Cidades ({enrolledCities.length})</option>
+            {enrolledCities.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -275,7 +320,7 @@ export const AttendanceManager: React.FC = () => {
           <button
             onClick={loadData}
             title="Atualizar dados"
-            className="p-2 text-slate-500 hover:text-slate-800 bg-slate-50 rounded-xl border border-slate-200"
+            className="p-2.5 sm:p-2 text-slate-500 hover:text-slate-800 bg-slate-50 rounded-xl border border-slate-200 flex-shrink-0"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -283,137 +328,224 @@ export const AttendanceManager: React.FC = () => {
 
       </div>
 
-      {/* Participants Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="p-4">Participante / Cidade</th>
-                <th className="p-4">1ª Oficina (Horário 1)</th>
-                <th className="p-4">2ª Oficina (Horário 2)</th>
-                <th className="p-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-400">
-                    Carregando participantes do evento...
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-400">
-                    Nenhum participante encontrado com estes critérios.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                    
-                    {/* Participant Details */}
-                    <td className="p-4">
-                      <div className="font-bold text-slate-900 text-sm">{p.name}</div>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                        <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                          <MapPin className="w-3 h-3" /> {p.city}
-                        </span>
-                        <span>• {p.family_group}</span>
-                      </div>
-                    </td>
-
-                    {/* 1ª Oficina Attendance */}
-                    <td className="p-4">
-                      {p.workshop1_title ? (
-                        <div className="space-y-1.5">
-                          <div className="font-medium text-slate-800 line-clamp-1">{p.workshop1_title}</div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'PRESENTE')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                                p.attendance1_status === 'PRESENTE'
-                                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-100'
-                              }`}
-                            >
-                              <CheckCircle className="w-3 h-3" /> Presente
-                            </button>
-                            <button
-                              onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'FALTA')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                                p.attendance1_status === 'FALTA'
-                                  ? 'bg-rose-500 text-white shadow-sm'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-rose-100'
-                              }`}
-                            >
-                              <XCircle className="w-3 h-3" /> Falta
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">Nenhuma inscrita</span>
-                      )}
-                    </td>
-
-                    {/* 2ª Oficina Attendance */}
-                    <td className="p-4">
-                      {p.workshop2_title ? (
-                        <div className="space-y-1.5">
-                          <div className="font-medium text-slate-800 line-clamp-1">{p.workshop2_title}</div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'PRESENTE')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                                p.attendance2_status === 'PRESENTE'
-                                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-100'
-                              }`}
-                            >
-                              <CheckCircle className="w-3 h-3" /> Presente
-                            </button>
-                            <button
-                              onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'FALTA')}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                                p.attendance2_status === 'FALTA'
-                                  ? 'bg-rose-500 text-white shadow-sm'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-rose-100'
-                              }`}
-                            >
-                              <XCircle className="w-3 h-3" /> Falta
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">Nenhuma inscrita</span>
-                      )}
-                    </td>
-
-                    {/* Delete */}
-                    <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleDeleteParticipant(p.id)}
-                        title="Remover participante"
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Participants: cards on mobile, table on sm+ */}
+      {loading ? (
+        <div className="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
+          Carregando participantes do evento...
         </div>
-      </div>
+      ) : filtered.length === 0 ? (
+        <div className="p-8 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
+          Nenhum participante encontrado com estes critérios.
+        </div>
+      ) : (
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="sm:hidden space-y-3">
+            {filtered.map((p) => (
+              <div key={p.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 text-sm truncate">{p.name}</div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-1 font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        <MapPin className="w-3 h-3" /> {p.city}
+                      </span>
+                      <span>{p.family_group}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteParticipant(p.id)}
+                    title="Remover participante"
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {p.workshop1_title ? (
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">1ª Oficina</p>
+                    <p className="text-xs font-medium text-slate-800 line-clamp-1">{p.workshop1_title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'PRESENTE')}
+                        className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                          p.attendance1_status === 'PRESENTE'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Presente
+                      </button>
+                      <button
+                        onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'FALTA')}
+                        className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                          p.attendance1_status === 'FALTA'
+                            ? 'bg-rose-500 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Falta
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {p.workshop2_title ? (
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">2ª Oficina</p>
+                    <p className="text-xs font-medium text-slate-800 line-clamp-1">{p.workshop2_title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'PRESENTE')}
+                        className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                          p.attendance2_status === 'PRESENTE'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Presente
+                      </button>
+                      <button
+                        onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'FALTA')}
+                        className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                          p.attendance2_status === 'FALTA'
+                            ? 'bg-rose-500 text-white shadow-sm'
+                            : 'bg-white border border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Falta
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {!p.workshop1_title && !p.workshop2_title && (
+                  <p className="text-xs text-slate-400 italic">Nenhuma oficina inscrita</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Tablet/Desktop: table */}
+          <div className="hidden sm:block bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="p-4">Participante / Cidade</th>
+                    <th className="p-4">1ª Oficina (Horário 1)</th>
+                    <th className="p-4">2ª Oficina (Horário 2)</th>
+                    <th className="p-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                  {filtered.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+
+                      {/* Participant Details */}
+                      <td className="p-4">
+                        <div className="font-bold text-slate-900 text-sm">{p.name}</div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                          <span className="inline-flex items-center gap-1 font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                            <MapPin className="w-3 h-3" /> {p.city}
+                          </span>
+                          <span>• {p.family_group}</span>
+                        </div>
+                      </td>
+
+                      {/* 1ª Oficina Attendance */}
+                      <td className="p-4">
+                        {p.workshop1_title ? (
+                          <div className="space-y-1.5">
+                            <div className="font-medium text-slate-800 line-clamp-1">{p.workshop1_title}</div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'PRESENTE')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                  p.attendance1_status === 'PRESENTE'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-blue-100'
+                                }`}
+                              >
+                                <CheckCircle className="w-3 h-3" /> Presente
+                              </button>
+                              <button
+                                onClick={() => p.workshop1_id && handleMarkAttendance(p.id, p.workshop1_id, 'FALTA')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                  p.attendance1_status === 'FALTA'
+                                    ? 'bg-rose-500 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-rose-100'
+                                }`}
+                              >
+                                <XCircle className="w-3 h-3" /> Falta
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Nenhuma inscrita</span>
+                        )}
+                      </td>
+
+                      {/* 2ª Oficina Attendance */}
+                      <td className="p-4">
+                        {p.workshop2_title ? (
+                          <div className="space-y-1.5">
+                            <div className="font-medium text-slate-800 line-clamp-1">{p.workshop2_title}</div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'PRESENTE')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                  p.attendance2_status === 'PRESENTE'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-blue-100'
+                                }`}
+                              >
+                                <CheckCircle className="w-3 h-3" /> Presente
+                              </button>
+                              <button
+                                onClick={() => p.workshop2_id && handleMarkAttendance(p.id, p.workshop2_id, 'FALTA')}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                                  p.attendance2_status === 'FALTA'
+                                    ? 'bg-rose-500 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-rose-100'
+                                }`}
+                              >
+                                <XCircle className="w-3 h-3" /> Falta
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Nenhuma inscrita</span>
+                        )}
+                      </td>
+
+                      {/* Delete */}
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => handleDeleteParticipant(p.id)}
+                          title="Remover participante"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Modal: Novo Participante */}
       {showAddParticipant && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-8 space-y-5 sm:space-y-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-900">Novo Participante do EPA</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Novo Participante do EPA</h3>
               <button onClick={() => setShowAddParticipant(false)} className="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
             </div>
 
@@ -426,21 +558,24 @@ export const AttendanceManager: React.FC = () => {
                   placeholder="Ex: João da Silva"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Cidade *</label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="Ex: Pirassununga"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
-                  />
+                    value={newCityId}
+                    onChange={(e) => setNewCityId(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
+                  >
+                    <option value="">Selecione a cidade...</option>
+                    {cities.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Família / Equipe</label>
@@ -449,7 +584,7 @@ export const AttendanceManager: React.FC = () => {
                     placeholder="Ex: Família Silva"
                     value={newFamilyGroup}
                     onChange={(e) => setNewFamilyGroup(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                   />
                 </div>
               </div>
@@ -459,7 +594,7 @@ export const AttendanceManager: React.FC = () => {
                 <select
                   value={newW1Id}
                   onChange={(e) => setNewW1Id(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 >
                   <option value="">Nenhuma / A definir</option>
                   {workshops.map(w => (
@@ -473,7 +608,7 @@ export const AttendanceManager: React.FC = () => {
                 <select
                   value={newW2Id}
                   onChange={(e) => setNewW2Id(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 >
                   <option value="">Nenhuma / A definir</option>
                   {workshops.map(w => (
@@ -482,17 +617,17 @@ export const AttendanceManager: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowAddParticipant(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+                  className="px-4 py-3 sm:py-2 bg-slate-100 text-slate-700 font-bold text-sm sm:text-xs rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-md"
+                  className="px-5 py-3 sm:py-2 bg-blue-600 text-white font-extrabold text-sm sm:text-xs rounded-xl shadow-md"
                 >
                   Cadastrar Participante
                 </button>
@@ -504,10 +639,10 @@ export const AttendanceManager: React.FC = () => {
 
       {/* Modal: Nova Oficina */}
       {showAddWorkshop && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-8 space-y-5 sm:space-y-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-900">Cadastrar Nova Oficina</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Cadastrar Nova Oficina</h3>
               <button onClick={() => setShowAddWorkshop(false)} className="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
             </div>
 
@@ -520,7 +655,7 @@ export const AttendanceManager: React.FC = () => {
                   placeholder="Ex: Comunicação Acolhedora na Família"
                   value={wsTitle}
                   onChange={(e) => setWsTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 />
               </div>
 
@@ -532,11 +667,11 @@ export const AttendanceManager: React.FC = () => {
                   placeholder="Ex: Dr. Roberto e Maria"
                   value={wsInstructor}
                   onChange={(e) => setWsInstructor(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Local / Sala *</label>
                   <input
@@ -545,7 +680,7 @@ export const AttendanceManager: React.FC = () => {
                     placeholder="Ex: Sala 102 - Bloco A"
                     value={wsLocation}
                     onChange={(e) => setWsLocation(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                   />
                 </div>
                 <div>
@@ -553,7 +688,7 @@ export const AttendanceManager: React.FC = () => {
                   <select
                     value={wsSlot}
                     onChange={(e) => setWsSlot(e.target.value as any)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
                   >
                     <option value="1ª Oficina">1ª Oficina</option>
                     <option value="2ª Oficina">2ª Oficina</option>
@@ -561,22 +696,70 @@ export const AttendanceManager: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowAddWorkshop(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+                  className="px-4 py-3 sm:py-2 bg-slate-100 text-slate-700 font-bold text-sm sm:text-xs rounded-xl"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-slate-900 text-white font-extrabold text-xs rounded-xl shadow-md"
+                  className="px-5 py-3 sm:py-2 bg-slate-900 text-white font-extrabold text-sm sm:text-xs rounded-xl shadow-md"
                 >
                   Salvar Oficina
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Gerenciar Cidades */}
+      {showManageCities && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 space-y-5 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Gerenciar Cidades</h3>
+              <button onClick={() => setShowManageCities(false)} className="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleAddCity} className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Nome da nova cidade..."
+                value={newCityName}
+                onChange={(e) => setNewCityName(e.target.value)}
+                className="flex-1 px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800"
+              />
+              <button
+                type="submit"
+                className="px-4 py-3 bg-blue-600 text-white font-extrabold text-sm rounded-xl shadow-md flex-shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </form>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {cities.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-4">Nenhuma cidade cadastrada.</p>
+              ) : (
+                cities.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-500" /> {c.name}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteCity(c.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

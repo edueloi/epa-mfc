@@ -43,8 +43,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
         
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-inner">
-            <Lock className="w-7 h-7 text-emerald-600" />
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center shadow-inner">
+            <Lock className="w-7 h-7 text-blue-600" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Área Restrita do EPA</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto">
@@ -53,16 +53,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
         </div>
 
         {/* Demo Credentials Helper Box */}
-        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-emerald-900">
-            <Shield className="w-4 h-4 text-emerald-600" />
+        <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-2xl text-xs space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-blue-900">
+            <Shield className="w-4 h-4 text-blue-600" />
             <span>Acesso para Organização:</span>
           </div>
-          <p className="text-emerald-800 text-[11px]">
-            Usuário: <code className="bg-white px-1.5 py-0.5 rounded border border-emerald-300 font-mono font-bold text-emerald-950">admin</code> ou <code className="bg-white px-1.5 py-0.5 rounded border border-emerald-300 font-mono font-bold text-emerald-950">oficineiro</code>
+          <p className="text-blue-800 text-[11px]">
+            Usuário: <code className="bg-white px-1.5 py-0.5 rounded border border-blue-300 font-mono font-bold text-blue-950">admin</code> ou <code className="bg-white px-1.5 py-0.5 rounded border border-blue-300 font-mono font-bold text-blue-950">oficineiro</code>
           </p>
-          <p className="text-emerald-800 text-[11px]">
-            Senha de Acesso: <code className="bg-white px-1.5 py-0.5 rounded border border-emerald-300 font-mono font-bold text-emerald-950">epa2026</code>
+          <p className="text-blue-800 text-[11px]">
+            Senha de Acesso: <code className="bg-white px-1.5 py-0.5 rounded border border-blue-300 font-mono font-bold text-blue-950">epa2026</code>
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 placeholder="Digite seu usuário..."
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
           </div>
@@ -100,7 +100,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 placeholder="Digite a senha..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
           </div>
@@ -115,7 +115,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-400 text-white font-extrabold text-xs rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
             >
               <LogIn className="w-4 h-4" />
               <span>Entrar no Sistema</span>

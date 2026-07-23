@@ -13,9 +13,9 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose }) => 
   if (!isOpen) return null;
 
   // Determine current public URL for the survey form
-  const surveyUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}${window.location.pathname}?tab=survey` 
-    : 'https://5epa-pirassununga.mfc.org.br';
+  const surveyUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/pesquisa-epa`
+    : 'https://epa.develoi.com.br/pesquisa-epa';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(surveyUrl);
@@ -31,11 +31,11 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose }) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in-95 duration-200">
-        
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 space-y-5 sm:space-y-6 shadow-2xl border border-slate-200 relative max-h-[92vh] overflow-y-auto">
+
         {/* Close Button */}
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
         >
@@ -43,27 +43,27 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose }) => 
         </button>
 
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center shadow-inner">
-            <QrCode className="w-6 h-6 text-teal-600" />
+        <div className="text-center space-y-2 pt-1">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shadow-inner">
+            <QrCode className="w-6 h-6 text-indigo-600" />
           </div>
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight">QR Code da Pesquisa EPA</h3>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">QR Code da Pesquisa EPA</h3>
           <p className="text-xs text-slate-500 max-w-xs mx-auto">
             Aponte a câmera do celular para responder diretamente ao formulário de avaliação do evento.
           </p>
         </div>
 
         {/* QR Code Canvas Frame */}
-        <div className="bg-slate-50 border-2 border-dashed border-teal-200 rounded-3xl p-6 flex flex-col items-center justify-center gap-3 shadow-sm">
-          <div className="p-4 bg-white rounded-2xl shadow-md border border-slate-100 flex items-center justify-center">
-            <QRCodeSVG 
+        <div className="bg-slate-50 border-2 border-dashed border-indigo-200 rounded-3xl p-4 sm:p-6 flex flex-col items-center justify-center gap-3 shadow-sm">
+          <div className="p-3 sm:p-4 bg-white rounded-2xl shadow-md border border-slate-100 flex items-center justify-center">
+            <QRCodeSVG
               value={surveyUrl}
-              size={200}
+              size={180}
               level="H"
               includeMargin={true}
             />
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-teal-800 font-bold bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+          <div className="flex items-center gap-1.5 text-xs text-indigo-800 font-bold bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
             <span>5º EPA Pirassununga - MFC</span>
           </div>
@@ -73,16 +73,16 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose }) => 
         <div className="space-y-3">
           <button
             onClick={handleCopyLink}
-            className="w-full py-3 px-4 bg-slate-900 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-md"
+            className="w-full py-3.5 sm:py-3 px-4 bg-slate-900 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-md active:scale-[0.98]"
           >
             {copied ? (
               <>
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-300">Link Copiado para a Área de Transferência!</span>
+                <Check className="w-4 h-4 text-blue-400" />
+                <span className="text-blue-300">Link Copiado!</span>
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4 text-teal-400" />
+                <Copy className="w-4 h-4 text-indigo-400" />
                 <span>Copiar Link do Formulário</span>
               </>
             )}
@@ -90,7 +90,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose }) => 
 
           <button
             onClick={handleShareWhatsApp}
-            className="w-full py-3 px-4 bg-emerald-600 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20"
+            className="w-full py-3.5 sm:py-3 px-4 bg-blue-600 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 active:scale-[0.98]"
           >
             <Smartphone className="w-4 h-4" />
             <span>Enviar no Grupo do WhatsApp</span>

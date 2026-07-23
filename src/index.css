@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+@theme {
+  --color-epa-blue: #2563eb;
+  --color-epa-indigo: #4f46e5;
+  --color-epa-night: #0f172a;
+}
+
+@keyframes epa-logo-bounce {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.1) translateY(-3px); }
+}
+
+@keyframes epa-logo-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-epa-loading {
+  animation: epa-logo-bounce 0.9s ease-in-out infinite, epa-logo-pulse 0.9s ease-in-out infinite;
+}
