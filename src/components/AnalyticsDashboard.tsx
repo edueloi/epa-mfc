@@ -309,19 +309,43 @@ export const AnalyticsDashboard: React.FC = () => {
             <p className="text-xs text-slate-500">Média das notas dadas pelos participantes em cada oficina</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {data.workshop_ratings.map((ws) => (
-              <div key={ws.workshop_id} className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1">{ws.workshop_title}</p>
-                <div className="flex items-center justify-between">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {data.workshop_ratings.map((ws) => {
+              const aspects = [
+                { label: 'Domínio do conteúdo', value: ws.avg_content },
+                { label: 'Didática/clareza', value: ws.avg_didactic },
+                { label: 'Material utilizado', value: ws.avg_material },
+                { label: 'Interação/participação', value: ws.avg_interaction },
+                { label: 'Aplicabilidade', value: ws.avg_applicability },
+              ];
+              return (
+                <div key={ws.workshop_id} className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1">{ws.workshop_title}</p>
+                    <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full text-xs flex-shrink-0">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      <span>{ws.avg_rating} / 5.0</span>
+                    </div>
+                  </div>
                   <span className="text-[11px] text-slate-500">{ws.total_votes} votos</span>
-                  <div className="flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full text-xs">
-                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    <span>{ws.avg_rating} / 5.0</span>
+
+                  <div className="space-y-1.5 pt-1 border-t border-slate-200">
+                    {aspects.map((a) => (
+                      <div key={a.label} className="flex items-center gap-2">
+                        <span className="text-[10px] sm:text-[11px] text-slate-600 w-28 sm:w-32 flex-shrink-0">{a.label}</span>
+                        <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${Math.min((a.value / 5) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 w-8 text-right flex-shrink-0">{a.value || 0}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

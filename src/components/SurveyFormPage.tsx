@@ -118,13 +118,26 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
 
   // Workshops — each time slot is answered independently: a participant may have
   // attended a workshop in the 1st slot, the 2nd, both, or neither (e.g. busy elsewhere).
+  // Each attended workshop gets a full set of quality-specific ratings.
   const [participated1, setParticipated1] = useState<boolean | null>(null);
   const [workshop1Id, setWorkshop1Id] = useState<number | ''>('');
   const [workshop1Rating, setWorkshop1Rating] = useState<number>(0);
+  const [workshop1ContentRating, setWorkshop1ContentRating] = useState<number>(0);
+  const [workshop1DidacticRating, setWorkshop1DidacticRating] = useState<number>(0);
+  const [workshop1MaterialRating, setWorkshop1MaterialRating] = useState<number>(0);
+  const [workshop1InteractionRating, setWorkshop1InteractionRating] = useState<number>(0);
+  const [workshop1ApplicabilityRating, setWorkshop1ApplicabilityRating] = useState<number>(0);
+  const [workshop1Comment, setWorkshop1Comment] = useState<string>('');
 
   const [participated2, setParticipated2] = useState<boolean | null>(null);
   const [workshop2Id, setWorkshop2Id] = useState<number | ''>('');
   const [workshop2Rating, setWorkshop2Rating] = useState<number>(0);
+  const [workshop2ContentRating, setWorkshop2ContentRating] = useState<number>(0);
+  const [workshop2DidacticRating, setWorkshop2DidacticRating] = useState<number>(0);
+  const [workshop2MaterialRating, setWorkshop2MaterialRating] = useState<number>(0);
+  const [workshop2InteractionRating, setWorkshop2InteractionRating] = useState<number>(0);
+  const [workshop2ApplicabilityRating, setWorkshop2ApplicabilityRating] = useState<number>(0);
+  const [workshop2Comment, setWorkshop2Comment] = useState<string>('');
 
   // Moments
   const [youthMomentRating, setYouthMomentRating] = useState<number>(0);
@@ -328,7 +341,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       ? [
           {
             section: 'workshops' as SectionId,
-            isAnswered: () => workshop1Id !== '' && workshop1Rating > 0,
+            isAnswered: () => workshop1Id !== '',
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
@@ -346,9 +359,75 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
                     </option>
                   ))}
                 </select>
-
-                <RatingInput label="Nota para essa oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />
               </div>
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1Rating > 0,
+            render: () => <RatingInput label="Nota geral para essa oficina" value={workshop1Rating} onChange={setWorkshop1Rating} />,
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1ContentRating > 0,
+            render: () => (
+              <RatingInput
+                label="Domínio do oficineiro sobre o conteúdo"
+                sublabel="O oficineiro demonstrou conhecimento e segurança ao explicar o tema."
+                value={workshop1ContentRating}
+                onChange={setWorkshop1ContentRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1DidacticRating > 0,
+            render: () => (
+              <RatingInput
+                label="Clareza na explicação / didática"
+                sublabel="O oficineiro conseguiu explicar de forma clara e fácil de entender."
+                value={workshop1DidacticRating}
+                onChange={setWorkshop1DidacticRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1MaterialRating > 0,
+            render: () => (
+              <RatingInput
+                label="Qualidade do material didático usado"
+                sublabel="Slides, apostilas, dinâmicas ou outros materiais utilizados."
+                value={workshop1MaterialRating}
+                onChange={setWorkshop1MaterialRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1InteractionRating > 0,
+            render: () => (
+              <RatingInput
+                label="Interação e participação dos presentes"
+                sublabel="Se a oficina permitiu perguntas, debate ou participação ativa."
+                value={workshop1InteractionRating}
+                onChange={setWorkshop1InteractionRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop1ApplicabilityRating > 0,
+            render: () => (
+              <RatingInput
+                label="Aplicabilidade do tema na vida real"
+                sublabel="O quanto o conteúdo pode ser aplicado no dia a dia da família/MFC."
+                value={workshop1ApplicabilityRating}
+                onChange={setWorkshop1ApplicabilityRating}
+                comment={workshop1Comment}
+                onCommentChange={setWorkshop1Comment}
+                commentPlaceholder="Comentário sobre essa oficina (opcional)"
+              />
             ),
           },
         ]
@@ -393,7 +472,7 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       ? [
           {
             section: 'workshops' as SectionId,
-            isAnswered: () => workshop2Id !== '' && workshop2Rating > 0,
+            isAnswered: () => workshop2Id !== '',
             render: () => (
               <div className="space-y-3">
                 <label className="text-xs font-bold text-purple-900 uppercase tracking-wider block">
@@ -411,9 +490,75 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
                     </option>
                   ))}
                 </select>
-
-                <RatingInput label="Nota para essa oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />
               </div>
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2Rating > 0,
+            render: () => <RatingInput label="Nota geral para essa oficina" value={workshop2Rating} onChange={setWorkshop2Rating} />,
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2ContentRating > 0,
+            render: () => (
+              <RatingInput
+                label="Domínio do oficineiro sobre o conteúdo"
+                sublabel="O oficineiro demonstrou conhecimento e segurança ao explicar o tema."
+                value={workshop2ContentRating}
+                onChange={setWorkshop2ContentRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2DidacticRating > 0,
+            render: () => (
+              <RatingInput
+                label="Clareza na explicação / didática"
+                sublabel="O oficineiro conseguiu explicar de forma clara e fácil de entender."
+                value={workshop2DidacticRating}
+                onChange={setWorkshop2DidacticRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2MaterialRating > 0,
+            render: () => (
+              <RatingInput
+                label="Qualidade do material didático usado"
+                sublabel="Slides, apostilas, dinâmicas ou outros materiais utilizados."
+                value={workshop2MaterialRating}
+                onChange={setWorkshop2MaterialRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2InteractionRating > 0,
+            render: () => (
+              <RatingInput
+                label="Interação e participação dos presentes"
+                sublabel="Se a oficina permitiu perguntas, debate ou participação ativa."
+                value={workshop2InteractionRating}
+                onChange={setWorkshop2InteractionRating}
+              />
+            ),
+          },
+          {
+            section: 'workshops' as SectionId,
+            isAnswered: () => workshop2ApplicabilityRating > 0,
+            render: () => (
+              <RatingInput
+                label="Aplicabilidade do tema na vida real"
+                sublabel="O quanto o conteúdo pode ser aplicado no dia a dia da família/MFC."
+                value={workshop2ApplicabilityRating}
+                onChange={setWorkshop2ApplicabilityRating}
+                comment={workshop2Comment}
+                onCommentChange={setWorkshop2Comment}
+                commentPlaceholder="Comentário sobre essa oficina (opcional)"
+              />
             ),
           },
         ]
@@ -475,11 +620,10 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'recommend',
-      isAnswered: () => recommendationText.trim().length > 0,
       render: () => (
         <div>
           <label className="text-sm font-semibold text-slate-800 block mb-1">
-            Como você recomendaria o EPA para quem não pôde vir nesta edição? (Depoimento)
+            Como você recomendaria o EPA para quem não pôde vir nesta edição? (Depoimento, opcional)
           </label>
           <textarea
             rows={4}
@@ -493,11 +637,10 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'recommend',
-      isAnswered: () => epaWord.trim().length > 0,
       render: () => (
         <div>
           <label className="text-sm font-semibold text-slate-800 block mb-1">
-            Em uma palavra ou frase, como você definiria o 5º EPA?
+            Em uma palavra ou frase, como você definiria o 5º EPA? (opcional)
           </label>
           <p className="text-xs text-slate-500 mb-2">Ex: "Renovação", "Família em movimento", "Encontro com Deus"...</p>
           <input
@@ -513,11 +656,10 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
     },
     {
       section: 'suggestions',
-      isAnswered: () => generalSuggestions.trim().length > 0,
       render: () => (
         <textarea
           rows={5}
-          placeholder="Deixe aqui suas sugestões de melhoria para os próximos encontros do MFC..."
+          placeholder="Deixe aqui suas sugestões de melhoria para os próximos encontros do MFC (opcional)..."
           value={generalSuggestions}
           onChange={(e) => setGeneralSuggestions(e.target.value)}
           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -611,8 +753,20 @@ export const SurveyFormPage: React.FC<SurveyFormPageProps> = ({ onSuccess }) => 
       participated_workshops: !!participated1 || !!participated2,
       workshop1_id: participated1 && workshop1Id !== '' ? Number(workshop1Id) : undefined,
       workshop1_rating: participated1 ? workshop1Rating : undefined,
+      workshop1_content_rating: participated1 ? workshop1ContentRating : undefined,
+      workshop1_didactic_rating: participated1 ? workshop1DidacticRating : undefined,
+      workshop1_material_rating: participated1 ? workshop1MaterialRating : undefined,
+      workshop1_interaction_rating: participated1 ? workshop1InteractionRating : undefined,
+      workshop1_applicability_rating: participated1 ? workshop1ApplicabilityRating : undefined,
+      workshop1_comment: participated1 ? workshop1Comment : undefined,
       workshop2_id: participated2 && workshop2Id !== '' ? Number(workshop2Id) : undefined,
       workshop2_rating: participated2 ? workshop2Rating : undefined,
+      workshop2_content_rating: participated2 ? workshop2ContentRating : undefined,
+      workshop2_didactic_rating: participated2 ? workshop2DidacticRating : undefined,
+      workshop2_material_rating: participated2 ? workshop2MaterialRating : undefined,
+      workshop2_interaction_rating: participated2 ? workshop2InteractionRating : undefined,
+      workshop2_applicability_rating: participated2 ? workshop2ApplicabilityRating : undefined,
+      workshop2_comment: participated2 ? workshop2Comment : undefined,
 
       youth_moment_rating: youthMomentRating,
       mirim_moment_rating: mirimMomentRating,

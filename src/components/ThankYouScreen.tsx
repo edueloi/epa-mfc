@@ -50,9 +50,16 @@ export const ThankYouScreen: React.FC<ThankYouScreenProps> = ({ onGoHome }) => {
           initial={{ scale: 0.4, opacity: 0, rotate: -15 }}
           animate={{ scale: [0.4, 1.12, 1], opacity: 1, rotate: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut', times: [0, 0.7, 1] }}
-          className="w-24 h-24 mx-auto rounded-3xl bg-white shadow-lg border border-slate-100 p-3 flex items-center justify-center"
+          className="relative w-24 h-24 mx-auto"
         >
-          <img src={logoEpa} alt="Logo 5º EPA Pirassununga" className="w-full h-full object-contain" />
+          <motion.div
+            animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0.15, 0.5] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute inset-0 rounded-full bg-blue-400 blur-xl"
+          />
+          <div className="relative w-24 h-24 rounded-3xl bg-white shadow-lg border border-slate-100 p-3 flex items-center justify-center">
+            <img src={logoEpa} alt="Logo 5º EPA Pirassununga" className="w-full h-full object-contain" />
+          </div>
         </motion.div>
 
         <motion.div

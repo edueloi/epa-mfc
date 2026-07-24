@@ -488,18 +488,36 @@ async function startServer() {
         const r = await queryOne(db, `
           SELECT
             AVG(rating) as avg_rating,
+            AVG(content_rating) as avg_content,
+            AVG(didactic_rating) as avg_didactic,
+            AVG(material_rating) as avg_material,
+            AVG(interaction_rating) as avg_interaction,
+            AVG(applicability_rating) as avg_applicability,
             COUNT(*) as total_votes
           FROM (
-            SELECT workshop1_rating as rating FROM surveys WHERE workshop1_id = ?
+            SELECT workshop1_rating as rating, workshop1_content_rating as content_rating,
+              workshop1_didactic_rating as didactic_rating, workshop1_material_rating as material_rating,
+              workshop1_interaction_rating as interaction_rating, workshop1_applicability_rating as applicability_rating
+            FROM surveys WHERE workshop1_id = ?
             UNION ALL
-            SELECT workshop2_rating as rating FROM surveys WHERE workshop2_id = ?
+            SELECT workshop2_rating as rating, workshop2_content_rating as content_rating,
+              workshop2_didactic_rating as didactic_rating, workshop2_material_rating as material_rating,
+              workshop2_interaction_rating as interaction_rating, workshop2_applicability_rating as applicability_rating
+            FROM surveys WHERE workshop2_id = ?
           ) t
         `, [w.id, w.id]);
+
+        const fmt = (v: any) => Math.round((Number(v) || 0) * 10) / 10;
 
         return {
           workshop_id: w.id,
           workshop_title: w.title,
-          avg_rating: Math.round((r?.avg_rating || 0) * 10) / 10,
+          avg_rating: fmt(r?.avg_rating),
+          avg_content: fmt(r?.avg_content),
+          avg_didactic: fmt(r?.avg_didactic),
+          avg_material: fmt(r?.avg_material),
+          avg_interaction: fmt(r?.avg_interaction),
+          avg_applicability: fmt(r?.avg_applicability),
           total_votes: r?.total_votes || 0
         };
       }));
@@ -583,10 +601,14 @@ async function startServer() {
           welcome_rating, checkin_rating,
           infra_accommodation, infra_breakfast, infra_lunch, infra_dinner, infra_restrooms, infra_tech,
           infra_lodging_used, infra_lodging_rating,
-          participated_workshops, workshop1_id, workshop1_rating, workshop2_id, workshop2_rating,
+          participated_workshops,
+          workshop1_id, workshop1_rating, workshop1_content_rating, workshop1_didactic_rating,
+          workshop1_material_rating, workshop1_interaction_rating, workshop1_applicability_rating, workshop1_comment,
+          workshop2_id, workshop2_rating, workshop2_content_rating, workshop2_didactic_rating,
+          workshop2_material_rating, workshop2_interaction_rating, workshop2_applicability_rating, workshop2_comment,
           youth_moment_rating, mirim_moment_rating, animation_rating, mass_rating, liturgy_rating, eco_friendly_rating,
           recommendation_text, recommendation_nps, epa_word, general_suggestions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         s.pre_study_rating || 5, s.pre_study_comment || '',
         s.marketing_rating || 5, s.marketing_comment || '',
@@ -596,8 +618,20 @@ async function startServer() {
         participatedAny ? 1 : 0,
         s.workshop1_id || null,
         s.workshop1_id ? (s.workshop1_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_content_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_didactic_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_material_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_interaction_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_applicability_rating || null) : null,
+        s.workshop1_id ? (s.workshop1_comment || '') : null,
         s.workshop2_id || null,
         s.workshop2_id ? (s.workshop2_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_content_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_didactic_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_material_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_interaction_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_applicability_rating || null) : null,
+        s.workshop2_id ? (s.workshop2_comment || '') : null,
         s.youth_moment_rating || 5, s.mirim_moment_rating || 5, s.animation_rating || 5, s.mass_rating || 5, s.liturgy_rating || 5, s.eco_friendly_rating || 5,
         s.recommendation_text || '', s.recommendation_nps || 10, s.epa_word || '', s.general_suggestions || ''
       ]);

@@ -59,12 +59,26 @@ export interface SurveyResponse {
   infra_lodging_used: boolean;
   infra_lodging_rating?: number;
 
-  // Workshops
+  // Workshops — each time slot (1st/2nd) is independent: a respondent may have
+  // attended a workshop in one, both, or neither. Each attended workshop gets
+  // a full set of quality-specific ratings, not just one overall score.
   participated_workshops: boolean;
   workshop1_id?: number;
   workshop1_rating?: number;
+  workshop1_content_rating?: number;
+  workshop1_didactic_rating?: number;
+  workshop1_material_rating?: number;
+  workshop1_interaction_rating?: number;
+  workshop1_applicability_rating?: number;
+  workshop1_comment?: string;
   workshop2_id?: number;
   workshop2_rating?: number;
+  workshop2_content_rating?: number;
+  workshop2_didactic_rating?: number;
+  workshop2_material_rating?: number;
+  workshop2_interaction_rating?: number;
+  workshop2_applicability_rating?: number;
+  workshop2_comment?: string;
 
   // Moments
   youth_moment_rating: number; // Momento Jovem
@@ -111,6 +125,11 @@ export interface SurveyAverages {
     workshop_id: number;
     workshop_title: string;
     avg_rating: number;
+    avg_content: number;
+    avg_didactic: number;
+    avg_material: number;
+    avg_interaction: number;
+    avg_applicability: number;
     total_votes: number;
   }[];
   recent_testimonials: {
